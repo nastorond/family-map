@@ -154,5 +154,5 @@ def test_pick_page(app, client, admin):
     login(client, "관리자", "19700101", "111111")
     page = client.get("/people").get_data(as_text=True)
     assert "아버지의 형제자매" in page  # 아빠 줄의 형제자매 추가 안내
-    assert "나와 연결 안 됨" in page
-    assert page.index("관리자") < page.index("아빠") < page.index("남남")
+    assert page.index("관리자") < page.index("아빠")
+    assert "남남" not in page  # 나와 연결 안 된 사람은 안 보임

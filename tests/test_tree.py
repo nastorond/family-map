@@ -81,8 +81,8 @@ def by_name(layout, names):
 def test_everyone_is_drawn_including_collaterals(big_family):
     layout, names = big_family
     nodes = by_name(layout, names)
-    assert set(nodes) == set(names.values())
-    assert len(layout["nodes"]) == len(names)
+    assert set(nodes) == set(names.values()) - {"남남"}
+    assert len(layout["nodes"]) == len(names) - 1
 
 
 def test_generations(big_family):
@@ -116,11 +116,9 @@ def test_children_under_parents(big_family):
     assert abs(mid - kids) < CARD_W  # 자녀 묶음이 부모 밑 근처
 
 
-def test_unconnected_drawn_separately(big_family):
+def test_unconnected_not_drawn(big_family):
     layout, names = big_family
-    n = by_name(layout, names)
-    others = [v["x"] for k, v in n.items() if k != "남남"]
-    assert n["남남"]["x"] > max(others)
+    assert "남남" not in by_name(layout, names)
 
 
 def test_edges(big_family):

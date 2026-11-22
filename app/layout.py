@@ -7,7 +7,7 @@
 3. 순서: 세대별로 줄을 세운 뒤, 부모/자녀 위치의 평균(barycenter)으로 몇 번 다시 정렬해
    선이 덜 꼬이게 한다.
 4. 가로 위치: 자녀는 부모 밑, 부모는 자녀 위로 끌어당기면서 겹치지 않게 민다.
-5. 나와 이어지지 않은 사람들은 오른쪽에 따로 그린다.
+5. 나와 관계로 이어지지 않은 사람은 그리지 않는다 (본인 가족만).
 """
 from collections import defaultdict, deque
 
@@ -78,9 +78,9 @@ def build_layout(gid: int, me_id: int, kins: dict | None = None, view: str = "al
     people = graph.people
     rel_info = _relation_info(gid)
 
-    # 연결 요소: 내가 있는 요소를 먼저
+    # 나와 이어진 사람들만 그린다 (본인 가족이 아니면 보이지 않음)
     comps, seen = [], set()
-    starts = ([me_id] if me_id in people else []) + sorted(people)
+    starts = [me_id] if me_id in people else []
     for s in starts:
         if s in seen:
             continue

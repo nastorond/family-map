@@ -235,6 +235,19 @@ def _table_title(keys: tuple[str, ...], n: list[Person]) -> str | None:
     return None
 
 
+def connected_ids(me: Person) -> set[int]:
+    """관계를 따라 나와 이어진 사람들 (나 포함)."""
+    graph = FamilyGraph(me.family_group_id)
+    seen, queue = {me.id}, deque([me.id])
+    while queue:
+        cur = queue.popleft()
+        for nxt in graph.parents[cur] | graph.children[cur] | graph.spouses[cur]:
+            if nxt not in seen:
+                seen.add(nxt)
+                queue.append(nxt)
+    return seen
+
+
 def kinships_from(me: Person) -> dict[int, Kin]:
     """나에서 닿는 모든 사람의 호칭/촌수. 이어지지 않은 사람은 빠진다."""
     graph = FamilyGraph(me.family_group_id)

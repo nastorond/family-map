@@ -14,8 +14,7 @@
     <details>
       <summary>
         <span class="pick-name">{{ person_label(p) }}</span>
-        {% if kin %}<span class="title">{{ kin.title }}</span>{% if chon_label(kin) %}<span class="muted small">{{ chon_label(kin) }}</span>{% endif %}
-        {% else %}<span class="badge">나와 연결 안 됨</span>{% endif %}
+        <span class="title">{{ kin.title }}</span>{% if chon_label(kin) %}<span class="muted small">{{ chon_label(kin) }}</span>{% endif %}
         <span class="muted small">{{ person_meta(p) }}</span>
       </summary>
       <div class="pick-actions">

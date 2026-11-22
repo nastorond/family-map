@@ -2,7 +2,7 @@ from flask import Blueprint, abort, flash, g, make_response, redirect, render_te
 from sqlalchemy import or_, select
 
 from .auth import login_required
-from .kinship import chon_label, kinships_from
+from .kinship import chon_label, connected_ids, kinships_from
 from .kinship import sibling_word as sibling_title
 from .models import GENDERS, PARENT_KINDS, SPOUSE_STATUSES, Person, Relation, User, db
 from .validation import parse_birth_date, parse_phone
@@ -16,9 +16,24 @@ def group_id() -> int:
     return g.user.person.family_group_id
 
 
+def visible_ids() -> set[int] | None:
+    """내 가족(관계로 나와 이어진 사람)만 보인다. 관리자는 제한 없음(None).
+
+    한 요청 안에서는 한 번만 계산한다.
+    """
+    if g.user.role == "admin":
+        return None
+    if "visible_ids" not in g:
+        g.visible_ids = connected_ids(g.user.person)
+    return g.visible_ids
+
+
 def get_person_or_404(pid: int) -> Person:
     person = db.session.get(Person, pid)
     if person is None or person.family_group_id != group_id():
+        abort(404)
+    visible = visible_ids()
+    if visible is not None and person.id not in visible:
         abort(404)
     return person
 
@@ -217,8 +232,11 @@ def find_candidates(target: Person, name: str, birth_date: str | None) -> list[t
         )
         .order_by(Person.id)
     ).all()
+    visible = visible_ids()
     result = []
     for p in rows:
+        if visible is not None and p.id not in visible:
+            continue
         if birth_date and p.birth_date == birth_date:
             result.append((p, "이름·생년월일 같음"))
         elif not birth_date or not p.birth_date:
@@ -231,19 +249,22 @@ def find_candidates(target: Person, name: str, birth_date: str | None) -> list[t
 @bp.get("")
 @login_required
 def index():
-    """가족 추가: 집안 사람 아무나 골라서 그 사람의 부모/배우자/형제자매/자녀를 붙인다."""
+    """사람 골라 붙이기: 내 가족 중 아무나 골라서 그 사람의 부모/배우자/형제자매/자녀를 붙인다.
+
+    나와 이어지지 않은 사람은 보여주지 않는다 (관리자도 이 목록에서는 내 가족만).
+    """
     me = g.user.person
     kins = kinships_from(me)
-    people = db.session.scalars(select(Person).where(Person.family_group_id == group_id())).all()
+    people = db.session.scalars(
+        select(Person).where(Person.family_group_id == group_id(), Person.id.in_(list(kins)))
+    ).all()
 
     rank = {"P": 0, "S": 1, "B": 2, "C": 3}
 
     def sort_key(p: Person):
-        kin = kins.get(p.id)
-        if kin is None:  # 나와 이어지지 않은 사람은 맨 뒤
-            return (1, 0, [], p.name)
+        kin = kins[p.id]
         # 가까운 순, 같은 거리면 부모 > 배우자 > 형제 > 자녀 쪽 순
-        return (0, len(kin.tokens), [rank[t] for t in kin.tokens], _birth_key(p))
+        return (len(kin.tokens), [rank[t] for t in kin.tokens], _birth_key(p))
 
     rows = [(p, kins.get(p.id)) for p in sorted(people, key=sort_key)]
     return render_template("people/index.html", rows=rows, chon_label=chon_label)

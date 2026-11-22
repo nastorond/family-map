@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.models import Person, User, db
+from app.models import Person, Relation, User, db
 from app.validation import parse_phone
 from tests.conftest import add, login, person_by_name, relations
 
@@ -169,9 +169,13 @@ def test_member_can_edit_self_and_own_registrations(app, as_member, member):
     assert person_by_name(app, "아이").is_deceased is True
 
 
-def test_member_cannot_edit_others(app, as_member, admin):
+def test_member_cannot_edit_others(app, as_member, admin, member):
     with app.app_context():
         admin_pid = db.session.get(User, admin).person_id
+        # 관리자를 내 아버지로 연결해서 내 가족으로 만든다
+        db.session.add(Relation(family_group_id=1, type="parent_child", person_a_id=admin_pid,
+                                person_b_id=member, kind="biological"))
+        db.session.commit()
     assert as_member.get(f"/people/{admin_pid}/edit").status_code == 403
     assert as_member.post(f"/people/{admin_pid}/edit", data={"name": "바꿈"}).status_code == 403
     # 수정은 못 해도 관계 추가는 할 수 있다
@@ -183,3 +187,41 @@ def test_admin_can_edit_anyone(app, client, admin, member):
     res = client.post(f"/people/{member}/edit", data={"name": "홍길동", "gender": "male", "birth_date": "19850313"})
     assert res.status_code == 302
     assert person_by_name(app, "홍길동").birth_date == "19850313"
+
+
+# --- 본인 가족만 보이기 ---
+
+def test_unconnected_person_hidden_from_member(app, as_member, member, admin):
+    with app.app_context():
+        stranger = Person(family_group_id=1, name="남남", birth_date="19900101")
+        db.session.add(stranger)
+        db.session.commit()
+        sid = stranger.id
+        admin_pid = db.session.get(User, admin).person_id
+    for url in (f"/people/{sid}", f"/people/{sid}/edit", f"/people/{sid}/add?rel=child",
+                f"/people/{sid}/add-sibling", f"/tree?main={sid}", f"/people/{admin_pid}"):
+        assert as_member.get(url).status_code == 404, url
+    assert "남남" not in as_member.get("/people").get_data(as_text=True)
+    names = {n["name"] for n in as_member.get("/tree/data").get_json()["nodes"]}
+    assert names == {"홍길동"}
+    # 연결 안 된 사람에게 link_to로 붙이는 것도 막힘
+    res = as_member.post(f"/people/{member}/add", data={"rel": "parent", "link_to": str(sid)})
+    assert res.status_code == 404
+
+
+def test_candidates_only_from_my_family(app, as_member, member):
+    with app.app_context():
+        db.session.add(Person(family_group_id=1, name="김철수", birth_date="19500101"))
+        db.session.commit()
+    res = add(as_member, member, "parent", name="김철수", birth_date="19500101")
+    assert res.status_code == 302  # 남의 김철수는 후보로 안 뜨고 바로 저장
+
+
+def test_admin_can_still_open_unconnected(app, client, admin):
+    with app.app_context():
+        stranger = Person(family_group_id=1, name="남남")
+        db.session.add(stranger)
+        db.session.commit()
+        sid = stranger.id
+    login(client, "관리자", "19700101", "111111")
+    assert client.get(f"/people/{sid}").status_code == 200
