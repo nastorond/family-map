@@ -1,28 +1,26 @@
 {% extends "base.html" %}
 {% block title %}가계도 · 우리 가계도{% endblock %}
-{% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='vendor/family-chart-0.9.0.css') }}">
-{% endblock %}
 {% block main_class %}wide{% endblock %}
 {% block content %}
 <div class="tree-bar">
-  <div>
-    <strong id="tree-main-name">{{ main.name }}</strong>
-    <span class="muted">중심</span>
+  <div class="tree-selected">
+    <strong id="tree-sel-name">{{ main.name }}</strong>
+    <span class="muted" id="tree-sel-title"></span>
   </div>
   <div class="tree-links">
-    <a id="tree-main-link" href="{{ url_for('people.detail', pid=main.id) }}">상세 / 가족 추가</a>
-    {% if main.id != g.user.person_id %}<a href="{{ url_for('tree.view') }}">나에게로</a>{% endif %}
+    <a id="tree-sel-link" href="{{ url_for('people.detail', pid=main.id) }}">상세 / 가족 추가</a>
+    <button type="button" class="link" id="tree-me">나에게로</button>
+    <button type="button" class="link" id="tree-fit">전체 보기</button>
   </div>
 </div>
-<p class="muted small tree-hint">카드를 누르면 그 사람을 중심으로 다시 그려요. 끌어서 움직이고, 두 손가락이나 휠로 확대해요.</p>
-<div id="FamilyChart" class="f3"
+<div id="tree" class="tree"
      data-src="{{ data_url }}"
      data-main="{{ main.id }}"
-     data-me="{{ g.user.person_id }}"
-     data-person-url="{{ person_url }}"></div>
+     data-person-url="{{ person_url }}">
+  <svg id="tree-svg" role="img" aria-label="가계도"></svg>
+</div>
+<p class="muted small tree-hint">카드를 누르면 선택돼요. 끌어서 움직이고, 두 손가락이나 휠로 확대해요.</p>
 <noscript><p>가계도를 보려면 자바스크립트가 필요해요.</p></noscript>
 <script src="{{ url_for('static', filename='vendor/d3-7.9.0.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendor/family-chart-0.9.0.min.js') }}"></script>
 <script src="{{ url_for('static', filename='tree.js') }}"></script>
 {% endblock %}

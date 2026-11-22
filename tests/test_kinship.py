@@ -140,7 +140,7 @@ def test_kinship_shown_on_detail_and_tree(app, client, admin):
     page = client.get(f"/people/{uncle_id}").get_data(as_text=True)
     assert "큰아버지" in page and "3촌" in page
     data = client.get("/tree/data").get_json()
-    titles = {d["data"]["name"]: d["data"]["title"] for d in data}
+    titles = {n["name"]: n["title"] for n in data["nodes"]}
     assert titles["큰집"] == "큰아버지" and titles["관리자"] == ""
 
 
