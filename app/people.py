@@ -42,26 +42,68 @@ def relatives(person: Person) -> dict:
         (r.person_b if r.person_a_id == pid else r.person_a, r) for r in rels if r.type == "spouse"
     ]
 
-    parent_ids = [p.id for p, _ in parents]
-    siblings = []
-    if parent_ids:
-        siblings = db.session.scalars(
-            select(Person)
-            .join(Relation, Relation.person_b_id == Person.id)
-            .where(
-                Relation.type == "parent_child",
-                Relation.person_a_id.in_(parent_ids),
-                Person.id != pid,
-            )
-            .distinct()
-        ).all()
-
     return {
         "parents": sorted(parents, key=lambda x: (x[0].gender != "male", _birth_key(x[0]))),
         "spouses": sorted(spouses, key=lambda x: x[1].created_at),
         "children": sorted(children, key=lambda x: _birth_key(x[0])),
-        "siblings": sorted(siblings, key=_birth_key),
+        "siblings": siblings_of(person, parents),
     }
+
+
+def sibling_title(me: Person, sib: Person) -> str:
+    """me가 sib을 부르는 말. 성별이나 나이 순서를 모르면 '형제자매'."""
+    if not (me.gender and sib.gender and me.birth_date and sib.birth_date):
+        return {"male": "남자 형제", "female": "여자 형제"}.get(sib.gender, "형제자매")
+    if sib.birth_date == me.birth_date:
+        return {"male": "남자 형제", "female": "여자 형제"}[sib.gender]
+    if sib.birth_date < me.birth_date:
+        if sib.gender == "male":
+            return "형" if me.gender == "male" else "오빠"
+        return "누나" if me.gender == "male" else "언니"
+    return "남동생" if sib.gender == "male" else "여동생"
+
+
+def siblings_of(person: Person, parents: list) -> list[tuple[Person, str, str | None]]:
+    """부모가 같은 사람을 계산한다. (사람, 호칭, 비고)
+
+    비고: 친부모가 한쪽만 같으면 '한쪽 부모만 같음', 친부모가 겹치지 않고
+    입양/의붓 부모로만 이어지면 '입양·의붓으로 연결'.
+    """
+    parent_ids = [p.id for p, _ in parents]
+    if not parent_ids:
+        return []
+    links = db.session.scalars(
+        select(Relation).where(
+            Relation.type == "parent_child",
+            or_(Relation.person_a_id.in_(parent_ids), Relation.person_b_id == person.id),
+        )
+    ).all()
+    my_bio = {r.person_a_id for r in links if r.person_b_id == person.id and r.kind == "biological"}
+    sib_ids = {r.person_b_id for r in links if r.person_a_id in parent_ids} - {person.id}
+    if not sib_ids:
+        return []
+
+    sib_bio = {sid: set() for sid in sib_ids}
+    for r in db.session.scalars(
+        select(Relation).where(
+            Relation.type == "parent_child",
+            Relation.kind == "biological",
+            Relation.person_b_id.in_(sib_ids),
+        )
+    ):
+        sib_bio[r.person_b_id].add(r.person_a_id)
+
+    result = []
+    for sib in db.session.scalars(select(Person).where(Person.id.in_(sib_ids))):
+        shared = my_bio & sib_bio[sib.id]
+        if not shared:
+            note = "입양·의붓으로 연결"
+        elif shared == my_bio == sib_bio[sib.id]:
+            note = None
+        else:
+            note = "한쪽 부모만 같음"
+        result.append((sib, sibling_title(person, sib), note))
+    return sorted(result, key=lambda x: _birth_key(x[0]))
 
 
 def read_person_form(form) -> tuple[dict, list[str]]:
@@ -266,6 +308,91 @@ def add(pid: int):
     db.session.commit()
     flash(f"{person.name}님을 {target.name}님의 {REL_LABELS[rel]}(으)로 추가했어요.")
     return redirect(url_for("people.detail", pid=target.id))
+
+
+@bp.route("/<int:pid>/add-sibling", methods=["GET", "POST"])
+@login_required
+def add_sibling(pid: int):
+    """형제자매 추가. 형제 관계는 저장하지 않고, target의 부모 밑에 자녀로 넣는다.
+
+    target의 부모가 등록돼 있지 않으면 부모 두 명(이름 모르면 '이름 모름')을 함께 만든다.
+    """
+    target = get_person_or_404(pid)
+    parent_rels = relatives(target)["parents"]
+    bio = [(p, r) for p, r in parent_rels if r.kind == "biological"]
+    base = bio or parent_rels  # [(부모, target과의 관계)]
+
+    def render(form, status=200, candidates=None):
+        return render_template(
+            "people/add_sibling.html",
+            target=target,
+            parents=[p for p, _ in base],
+            form=form,
+            candidates=candidates or [],
+        ), status
+
+    if request.method == "GET":
+        return render({})
+
+    form = request.form
+    if base:
+        share = form.get("share", "all")
+        chosen = base if share == "all" else [(p, r) for p, r in base if str(p.id) == share]
+        if not chosen:
+            abort(400)
+        links = [(p, r.kind) for p, r in chosen]
+        new_parents = []
+    else:
+        links = []
+        new_parents = [
+            (form.get("father_name", "").strip() or "이름 모름", "male"),
+            (form.get("mother_name", "").strip() or "이름 모름", "female"),
+        ]
+
+    def finish(sibling: Person, verb: str):
+        made = []
+        for name, gender in new_parents:
+            parent = Person(
+                family_group_id=target.family_group_id, name=name, gender=gender, created_by=g.user.id
+            )
+            db.session.add(parent)
+            db.session.flush()
+            _create_relation("child", parent, target, "biological", None)
+            links.append((parent, "biological"))
+            made.append(name)
+        for parent, kind in links:
+            _create_relation("child", parent, sibling, kind, None)
+        db.session.commit()
+        flash(f"{sibling.name}님을 {target.name}님의 형제자매로 {verb}.")
+        if made:
+            flash(f"부모가 등록돼 있지 않아서 부모({', '.join(made)})를 함께 만들었어요. 나중에 정보를 고칠 수 있어요.")
+        return redirect(url_for("people.detail", pid=target.id))
+
+    if link_to := form.get("link_to"):
+        other = get_person_or_404(int(link_to)) if link_to.isdigit() else abort(400)
+        reason = "자기 자신과는 연결할 수 없어요." if other.id == target.id else None
+        for parent, kind in links:
+            reason = reason or check_relation("child", parent, other.id, kind)
+        if not reason and new_parents and _bio_parent_count(other.id) > 0:
+            reason = "이 사람은 이미 부모가 등록돼 있어요. 부모 화면에서 자녀로 연결해 주세요."
+        if reason:
+            flash(reason, "error")
+            return render(form, 400)
+        return finish(other, "연결했어요")
+
+    values, errors = read_person_form(form)
+    if errors:
+        for msg in errors:
+            flash(msg, "error")
+        return render(form, 400)
+    if not form.get("confirm_new"):
+        if candidates := find_candidates(target, values["name"], values["birth_date"]):
+            return render(form, 200, candidates)
+
+    sibling = Person(family_group_id=target.family_group_id, created_by=g.user.id, **values)
+    db.session.add(sibling)
+    db.session.flush()
+    return finish(sibling, "추가했어요")
 
 
 def _create_relation(rel: str, target: Person, other: Person, kind, status) -> None:

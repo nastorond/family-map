@@ -40,15 +40,24 @@
 {{ section("부모", rel.parents, "parent", "kind") }}
 {{ section("배우자", rel.spouses, "spouse", "status") }}
 {{ section("자녀", rel.children, "child", "kind") }}
-{% if rel.siblings %}
 <section class="relatives">
-  <div class="section-head"><h2>형제자매</h2></div>
+  <div class="section-head">
+    <h2>형제자매</h2>
+    <a class="add" href="{{ url_for('people.add_sibling', pid=person.id) }}">+ 추가</a>
+  </div>
+  {% if rel.siblings %}
   <ul class="people">
-    {% for p in rel.siblings %}
-    <li><a href="{{ url_for('people.detail', pid=p.id) }}">{{ person_label(p) }}</a> <span class="muted">{{ person_meta(p) }}</span></li>
+    {% for p, title, note in rel.siblings %}
+    <li>
+      <span class="title">{{ title }}</span>
+      <a href="{{ url_for('people.detail', pid=p.id) }}">{{ person_label(p) }}</a>
+      <span class="muted">{{ person_meta(p) }}</span>
+      {% if note %}<span class="badge">{{ note }}</span>{% endif %}
+    </li>
     {% endfor %}
   </ul>
-  <p class="muted small">부모가 같은 사람을 계산해서 보여줘요. 형제자매를 추가하려면 부모 화면에서 자녀로 추가하세요.</p>
+  {% else %}
+  <p class="muted">아직 없어요.</p>
+  {% endif %}
 </section>
-{% endif %}
 {% endblock %}
