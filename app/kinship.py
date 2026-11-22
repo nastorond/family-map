@@ -33,13 +33,27 @@ class FamilyGraph:
         self.parents = defaultdict(set)
         self.children = defaultdict(set)
         self.spouses = defaultdict(set)
+        self.parent_kind: dict[tuple[int, int], str] = {}  # (부모, 자녀) -> kind
+        self.spouse_status: dict[tuple[int, int], str] = {}  # (작은 id, 큰 id) -> status
         for r in db.session.scalars(select(Relation).where(Relation.family_group_id == gid)):
             if r.type == "parent_child":
                 self.parents[r.person_b_id].add(r.person_a_id)
                 self.children[r.person_a_id].add(r.person_b_id)
+                self.parent_kind[(r.person_a_id, r.person_b_id)] = r.kind
             else:
                 self.spouses[r.person_a_id].add(r.person_b_id)
                 self.spouses[r.person_b_id].add(r.person_a_id)
+                self.spouse_status[(r.person_a_id, r.person_b_id)] = r.status
+
+    def restrict(self, keep: set[int]) -> None:
+        """keep에 든 사람과 그 사이 관계만 남긴다."""
+        self.people = {k: v for k, v in self.people.items() if k in keep}
+        for rel in (self.parents, self.children, self.spouses):
+            for k in list(rel):
+                if k not in keep:
+                    del rel[k]
+                else:
+                    rel[k] = rel[k] & keep
 
     def _neighbors(self, pid: int):
         # 같은 길이면 혈연 경로가 먼저 잡히도록 배우자를 마지막에 본다.

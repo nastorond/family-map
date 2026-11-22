@@ -22,9 +22,59 @@ LAYER_H = 130
 COMP_GAP = 120
 
 
-def build_layout(gid: int, me_id: int, kins: dict | None = None) -> dict:
+class ViewUnavailable(Exception):
+    pass
+
+
+def view_anchor(graph: FamilyGraph, me_id: int, view: str) -> int | None:
+    """친가는 아버지, 외가는 어머니, 처가/시가는 배우자. 친생/혼인 중을 먼저 고른다."""
+    if view in ("paternal", "maternal"):
+        want = "male" if view == "paternal" else "female"
+        ps = [p for p in graph.parents[me_id] if graph.people[p].gender == want]
+        ps.sort(key=lambda p: (graph.parent_kind.get((p, me_id)) != "biological", p))
+        return ps[0] if ps else None
+    if view == "inlaw":
+        ss = sorted(graph.spouses[me_id])
+        ss.sort(key=lambda s: graph.spouse_status.get((min(s, me_id), max(s, me_id))) != "married")
+        return ss[0] if ss else None
+    return None
+
+
+def side_members(graph: FamilyGraph, anchor: int) -> set[int]:
+    """anchor와 그 조상들, 조상들의 모든 자손, 그리고 그 사람들의 배우자."""
+    ancestors, q = {anchor}, deque([anchor])
+    while q:
+        for p in graph.parents[q.popleft()]:
+            if p not in ancestors:
+                ancestors.add(p)
+                q.append(p)
+    core, q = set(ancestors), deque(ancestors)
+    while q:
+        for c in graph.children[q.popleft()]:
+            if c not in core:
+                core.add(c)
+                q.append(c)
+    return core | {s for p in core for s in graph.spouses[p]}
+
+
+def available_views(gid: int, me) -> list[tuple[str, str]]:
+    graph = FamilyGraph(gid)
+    inlaw = {"male": "처가", "female": "시가"}.get(me.gender, "배우자 쪽")
+    views = [("all", "전체")]
+    for key, label in (("paternal", "친가"), ("maternal", "외가"), ("inlaw", inlaw)):
+        if view_anchor(graph, me.id, key) is not None:
+            views.append((key, label))
+    return views
+
+
+def build_layout(gid: int, me_id: int, kins: dict | None = None, view: str = "all") -> dict:
     kins = kins or {}
     graph = FamilyGraph(gid)
+    if view != "all":
+        anchor = view_anchor(graph, me_id, view)
+        if anchor is None:
+            raise ViewUnavailable(view)
+        graph.restrict(side_members(graph, anchor))
     people = graph.people
     rel_info = _relation_info(gid)
 

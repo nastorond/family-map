@@ -133,6 +133,50 @@ def test_edges(big_family):
     assert any(e["type"] == "spouse" and e["status"] == "divorced" for e in layout["edges"])
 
 
+def view_names(app, names, view):
+    with app.app_context():
+        me_id = next(pid for pid, n in names.items() if n == "나")
+        return {names[int(n["id"])] for n in build_layout(1, me_id, view=view)["nodes"]}
+
+
+def test_paternal_view(app, big_family):
+    _, names = big_family
+    got = view_names(app, names, "paternal")
+    assert {"할아버지", "할머니", "아버지", "큰아버지", "큰어머니", "사촌", "고모", "고종사촌",
+            "어머니", "새어머니", "나", "아내", "딸", "아들"} <= got
+    assert not got & {"외할아버지", "외할머니", "이모", "이종사촌", "장인", "장모", "처제", "남남"}
+
+
+def test_maternal_view(app, big_family):
+    _, names = big_family
+    got = view_names(app, names, "maternal")
+    assert {"외할아버지", "외할머니", "어머니", "이모", "이종사촌", "나", "아내", "딸", "아들", "아버지"} <= got
+    assert not got & {"할아버지", "큰아버지", "사촌", "고모", "새어머니", "장인", "처제", "남남"}
+
+
+def test_inlaw_view(app, big_family):
+    _, names = big_family
+    got = view_names(app, names, "inlaw")
+    assert got == {"아내", "장인", "장모", "처제", "나", "딸", "아들"}
+
+
+def test_view_buttons_and_errors(app, client, admin, big_family):
+    login(client, "관리자", "19700101", "111111")
+    page = client.get("/tree").get_data(as_text=True)
+    for label in ("전체", "친가", "외가", "처가"):
+        assert f">{label}</button>" in page
+    assert client.get("/tree/data?view=paternal").status_code == 200
+    assert client.get("/tree/data?view=weird").status_code == 400
+    assert 'data-view="maternal"' in client.get("/tree?view=maternal").get_data(as_text=True)
+
+
+def test_view_unavailable_without_parents(client, admin):
+    login(client, "관리자", "19700101", "111111")
+    page = client.get("/tree").get_data(as_text=True)
+    assert ">친가</button>" not in page  # 부모가 없으면 버튼도 없음
+    assert client.get("/tree/data?view=paternal").status_code == 404
+
+
 def test_titles_and_me(app, client, admin):
     with app.app_context():
         me = db.session.get(User, admin).person

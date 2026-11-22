@@ -13,9 +13,17 @@
     <button type="button" class="link" id="tree-fit">전체 보기</button>
   </div>
 </div>
+{% if views | length > 1 %}
+<div class="view-switch" role="tablist" aria-label="가계도 범위">
+  {% for key, label in views %}
+  <button type="button" role="tab" data-view="{{ key }}" aria-selected="{{ 'true' if key == view else 'false' }}">{{ label }}</button>
+  {% endfor %}
+</div>
+{% endif %}
 <div id="tree" class="tree"
      data-src="{{ data_url }}"
      data-main="{{ main.id }}"
+     data-view="{{ view }}"
      data-person-url="{{ person_url }}">
   <svg id="tree-svg" role="img" aria-label="가계도"></svg>
 </div>

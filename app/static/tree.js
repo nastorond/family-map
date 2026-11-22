@@ -13,15 +13,15 @@
   var selTitle = document.getElementById("tree-sel-title");
   var selLink = document.getElementById("tree-sel-link");
   var personUrl = box.dataset.personUrl;
+  var viewButtons = Array.prototype.slice.call(document.querySelectorAll(".view-switch button"));
 
   var zoom = d3.zoom().scaleExtent([0.15, 2.5]).on("zoom", function (e) {
     root.attr("transform", e.transform);
   });
   svg.call(zoom).on("dblclick.zoom", null);
 
-  var byId = {};
+  var state = { view: box.dataset.view || "all", selected: box.dataset.main, data: null, byId: {} };
   var card = { w: 128, h: 60 };
-  var selected = null;
 
   function size() {
     var r = box.getBoundingClientRect();
@@ -29,7 +29,7 @@
   }
 
   function centerOn(id, scale, animate) {
-    var n = byId[id];
+    var n = state.byId[id];
     if (!n) return;
     var s = size();
     var k = scale || d3.zoomTransform(svg.node()).k || 1;
@@ -37,7 +37,8 @@
     (animate ? svg.transition().duration(450) : svg).call(zoom.transform, t);
   }
 
-  function fitAll(nodes) {
+  function fitAll() {
+    var nodes = state.data.nodes;
     var s = size();
     var xs = nodes.map(function (n) { return n.x; });
     var ys = nodes.map(function (n) { return n.y; });
@@ -50,69 +51,101 @@
     svg.transition().duration(450).call(zoom.transform, t);
   }
 
+  function syncUrl() {
+    var params = new URLSearchParams();
+    var n = state.byId[state.selected];
+    if (n && !n.me) params.set("main", state.selected);
+    if (state.view !== "all") params.set("view", state.view);
+    var qs = params.toString();
+    history.replaceState(null, "", location.pathname + (qs ? "?" + qs : ""));
+  }
+
   function select(id) {
-    var n = byId[id];
+    var n = state.byId[id];
     if (!n) return;
-    selected = id;
+    state.selected = id;
     nodeLayer.selectAll("g.person").classed("selected", function (d) { return d.id === id; });
     selName.textContent = n.name;
     selTitle.textContent = n.me ? "나" : (n.title || "");
     selLink.href = personUrl + id;
-    var url = n.me ? location.pathname : location.pathname + "?main=" + id;
-    history.replaceState(null, "", url);
+    syncUrl();
   }
 
-  fetch(box.dataset.src, { credentials: "same-origin", headers: { Accept: "application/json" } })
-    .then(function (res) {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    })
-    .then(function (data) {
-      card = data.card;
-      data.nodes.forEach(function (n) { byId[n.id] = n; });
+  function draw(data) {
+    card = data.card;
+    state.data = data;
+    state.byId = {};
+    data.nodes.forEach(function (n) { state.byId[n.id] = n; });
 
-      edgeLayer.selectAll("path")
-        .data(data.edges)
-        .join("path")
-        .attr("d", function (e) { return e.d; })
-        .attr("class", function (e) {
-          var cls = "edge edge-" + e.type;
-          if (e.type === "child" && e.kind && e.kind !== "biological") cls += " edge-dashed";
-          if (e.type === "spouse" && e.status && e.status !== "married") cls += " edge-dashed";
-          return cls;
-        });
-
-      var g = nodeLayer.selectAll("g.person")
-        .data(data.nodes, function (d) { return d.id; })
-        .join("g")
-        .attr("class", function (d) {
-          return "person gender-" + (d.gender || "unknown") + (d.me ? " me" : "") + (d.deceased ? " deceased" : "");
-        })
-        .attr("transform", function (d) { return "translate(" + (d.x - card.w / 2) + "," + (d.y - card.h / 2) + ")"; })
-        .on("click", function (e, d) { select(d.id); });
-
-      g.append("rect").attr("width", card.w).attr("height", card.h).attr("rx", 8);
-      // textContent로 넣으므로 이름에 태그가 있어도 그대로 글자로 보인다.
-      g.append("text").attr("class", "name").attr("x", card.w / 2).attr("y", 24)
-        .text(function (d) { return d.name + (d.deceased ? " (고인)" : ""); });
-      g.append("text").attr("class", "sub").attr("x", card.w / 2).attr("y", 44)
-        .text(function (d) {
-          return [d.me ? "나" : d.title, d.birth].filter(Boolean).join(" · ");
-        });
-
-      var start = byId[box.dataset.main] ? box.dataset.main : data.me;
-      centerOn(start, 1, false);
-      select(start);
-
-      document.getElementById("tree-me").addEventListener("click", function () {
-        centerOn(data.me, 1, true);
-        select(data.me);
+    edgeLayer.selectAll("path")
+      .data(data.edges)
+      .join("path")
+      .attr("d", function (e) { return e.d; })
+      .attr("class", function (e) {
+        var cls = "edge edge-" + e.type;
+        if (e.type === "child" && e.kind && e.kind !== "biological") cls += " edge-dashed";
+        if (e.type === "spouse" && e.status && e.status !== "married") cls += " edge-dashed";
+        return cls;
       });
-      document.getElementById("tree-fit").addEventListener("click", function () {
-        fitAll(data.nodes);
+
+    var g = nodeLayer.selectAll("g.person")
+      .data(data.nodes, function (d) { return d.id; })
+      .join(function (enter) {
+        var g = enter.append("g").on("click", function (e, d) { select(d.id); });
+        g.append("rect").attr("rx", 8);
+        g.append("text").attr("class", "name").attr("y", 24);
+        g.append("text").attr("class", "sub").attr("y", 44);
+        return g;
       });
-    })
-    .catch(function () {
-      box.innerHTML = '<p class="tree-error">가계도를 불러오지 못했어요. 새로고침해 주세요.</p>';
+
+    g.attr("class", function (d) {
+      return "person gender-" + (d.gender || "unknown") + (d.me ? " me" : "") + (d.deceased ? " deceased" : "");
+    }).attr("transform", function (d) {
+      return "translate(" + (d.x - card.w / 2) + "," + (d.y - card.h / 2) + ")";
     });
+    g.select("rect").attr("width", card.w).attr("height", card.h);
+    // textContent로 넣으므로 이름에 태그가 있어도 그대로 글자로 보인다.
+    g.select("text.name").attr("x", card.w / 2)
+      .text(function (d) { return d.name + (d.deceased ? " (고인)" : ""); });
+    g.select("text.sub").attr("x", card.w / 2)
+      .text(function (d) { return [d.me ? "나" : d.title, d.birth].filter(Boolean).join(" · "); });
+
+    // 이전에 고른 사람이 이 범위에 없으면 나로 돌아간다.
+    var start = state.byId[state.selected] ? state.selected : data.me;
+    select(start);
+    centerOn(start, d3.zoomTransform(svg.node()).k || 1, false);
+  }
+
+  function load(view) {
+    state.view = view;
+    viewButtons.forEach(function (b) { b.setAttribute("aria-selected", b.dataset.view === view ? "true" : "false"); });
+    var url = box.dataset.src + (view !== "all" ? "?view=" + encodeURIComponent(view) : "");
+    return fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(draw)
+      .catch(function () {
+        edgeLayer.selectAll("*").remove();
+        nodeLayer.selectAll("*").remove();
+        selTitle.textContent = "가계도를 불러오지 못했어요. 새로고침해 주세요.";
+      });
+  }
+
+  viewButtons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      if (b.dataset.view !== state.view) load(b.dataset.view);
+    });
+  });
+  document.getElementById("tree-me").addEventListener("click", function () {
+    if (!state.data) return;
+    centerOn(state.data.me, 1, true);
+    select(state.data.me);
+  });
+  document.getElementById("tree-fit").addEventListener("click", function () {
+    if (state.data) fitAll();
+  });
+
+  load(state.view);
 })();
