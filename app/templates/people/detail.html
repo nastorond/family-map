@@ -20,7 +20,7 @@
 <section class="relatives">
   <div class="section-head">
     <h2>{{ title }}</h2>
-    {% if rel_type %}<a class="add" href="{{ url_for('people.add', pid=person.id, rel=rel_type) }}">+ 추가</a>{% endif %}
+    {% if rel_type %}{% set u = url_for('people.add', pid=person.id, rel=rel_type) %}<a class="add" href="{{ u }}" hx-get="{{ u }}" hx-target="#add-dialog-body">+ 추가</a>{% endif %}
   </div>
   {% if items %}
   <ul class="people">
@@ -45,7 +45,7 @@
 <section class="relatives">
   <div class="section-head">
     <h2>형제자매</h2>
-    <a class="add" href="{{ url_for('people.add_sibling', pid=person.id) }}">+ 추가</a>
+    {% set u = url_for('people.add_sibling', pid=person.id) %}<a class="add" href="{{ u }}" hx-get="{{ u }}" hx-target="#add-dialog-body">+ 추가</a>
   </div>
   {% if rel.siblings %}
   <ul class="people">

@@ -72,6 +72,61 @@ def test_inlaw_labels_for_female(app, client, admin):
     assert "시아버지·시어머니" in part and "아주버님·시동생·시누이" in part
 
 
+# --- 입력 폼도 팝업 안에서 ---
+
+def test_add_form_in_popup(app, as_member, member):
+    part = as_member.get(f"/people/{member}/add?rel=parent&gender=male&guide=father", headers=HX).get_data(as_text=True)
+    assert "<html" not in part
+    assert f'hx-post="/people/{member}/add"' in part and 'hx-target="#add-dialog-body"' in part
+    assert "data-close-dialog" in part  # 취소 = 팝업 닫기
+
+
+def test_popup_validation_error_stays_in_popup(app, as_member, member):
+    res = as_member.post(f"/people/{member}/add", headers=HX, data={"rel": "parent", "name": ""})
+    assert res.status_code == 200  # htmx는 4xx를 화면에 넣지 않으므로 200
+    body = res.get_data(as_text=True)
+    assert "<html" not in body and "이름을 입력해 주세요." in body
+
+
+def test_popup_save_refreshes_page(app, as_member, member):
+    res = as_member.post(f"/people/{member}/add", headers=HX,
+                         data={"rel": "parent", "name": "아버지", "gender": "male"})
+    assert res.status_code == 200 and res.headers.get("HX-Refresh") == "true"
+    assert person_by_name(app, "아버지") is not None
+    # 새로고침된 화면에 저장 메시지
+    page = as_member.get(f"/people/{member}").get_data(as_text=True)
+    assert "아버지님을 홍길동님의 부모(으)로 추가했어요." in page
+
+
+def test_popup_candidates_and_link(app, as_member, member):
+    add(as_member, member, "parent", name="박순자", gender="female", birth_date="19560303")
+    as_member.get(f"/people/{member}")  # 플래시 비우기
+    mom = person_by_name(app, "박순자")
+    res = as_member.post(f"/people/{member}/add", headers=HX,
+                         data={"rel": "spouse", "name": "박순자", "birth_date": "19560303"})
+    body = res.get_data(as_text=True)
+    assert res.status_code == 200 and "같은 사람일 수 있는" in body and "<html" not in body
+    assert body.count(f'hx-post="/people/{member}/add"') >= 2  # 연결 버튼 폼도 팝업 안에서
+
+
+def test_sibling_form_in_popup(app, as_member, member):
+    part = as_member.get(f"/people/{member}/add-sibling?guide=sibling", headers=HX).get_data(as_text=True)
+    assert "<html" not in part and f'hx-post="/people/{member}/add-sibling"' in part
+    res = as_member.post(f"/people/{member}/add-sibling", headers=HX, data={"name": "동생", "gender": "male"})
+    assert res.headers.get("HX-Refresh") == "true"
+
+
+def test_guide_final_links_open_in_popup(as_member, member):
+    part = as_member.get("/people/guide/mine", headers=HX).get_data(as_text=True)
+    assert f'hx-get="/people/{member}/add?rel=spouse&amp;guide=spouse"' in part
+
+
+def test_detail_add_links_open_popup(as_member, member):
+    page = as_member.get(f"/people/{member}").get_data(as_text=True)
+    assert f'hx-get="/people/{member}/add?rel=parent"' in page
+    assert f'hx-get="/people/{member}/add-sibling"' in page
+
+
 def test_unknown_category_404(as_member):
     assert as_member.get("/people/guide/nope").status_code == 404
     assert as_member.get("/people/guide/paternal/m_uncle").status_code == 404  # 다른 분류의 유형

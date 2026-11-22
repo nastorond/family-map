@@ -1,0 +1,73 @@
+{# 형제자매 추가 폼. popup이면 팝업 안에서 htmx로 제출된다. #}
+{% from "_macros.html" import csrf, person_fields, person_label, person_meta %}
+{% set post = 'method="post" action="' ~ request.path ~ '"' ~ (' hx-post="' ~ request.path ~ '" hx-target="#add-dialog-body"' if popup else '') %}
+<h2 class="form-title">{{ target.name }}님의 형제자매 추가</h2>
+{% if guide %}<p class="kin">나에게 <strong>{{ guide }}</strong></p>{% endif %}
+{% if popup %}{% for category, message in get_flashed_messages(with_categories=true) %}<p class="flash {{ category }}">{{ message }}</p>{% endfor %}{% endif %}
+<p class="muted">형, 오빠, 누나, 언니, 동생 모두 여기서 추가해요. 성별과 생년월일을 넣으면 호칭이 자동으로 붙어요.</p>
+
+{% macro keep_share() %}
+  {% if form.get('share') %}<input type="hidden" name="share" value="{{ form.get('share') }}">{% endif %}
+  {% if form.get('father_name') %}<input type="hidden" name="father_name" value="{{ form.get('father_name') }}">{% endif %}
+  {% if form.get('mother_name') %}<input type="hidden" name="mother_name" value="{{ form.get('mother_name') }}">{% endif %}
+{% endmacro %}
+
+{% if candidates %}
+<section class="panel candidates">
+  <p><strong>이미 등록된 사람 중에 같은 사람일 수 있는 분이 있어요.</strong><br>
+  <span class="muted">같은 사람이면 연결하고, 다른 사람이면 아래에서 새로 추가하세요.</span></p>
+  <ul class="people">
+    {% for p, reason in candidates %}
+    <li>
+      <a href="{{ url_for('people.detail', pid=p.id) }}" target="_blank">{{ person_label(p) }}</a>
+      <span class="muted">{{ person_meta(p) }}</span>
+      <span class="badge">{{ reason }}</span>
+      <form {{ post | safe }}>
+        {{ csrf() }}
+        <input type="hidden" name="link_to" value="{{ p.id }}">
+        {{ keep_share() }}
+        <button type="submit">이 사람으로 연결</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<form {{ post | safe }} class="stack">
+  {{ csrf() }}
+  {% if request.values.get('guide') %}<input type="hidden" name="guide" value="{{ request.values.get('guide') }}">{% endif %}
+  {% if candidates %}<input type="hidden" name="confirm_new" value="1">{{ keep_share() }}{% endif %}
+  {{ person_fields(form) }}
+
+  {% if not candidates %}
+    {% if parents %}
+      {% if parents | length > 1 %}
+      <fieldset>
+        <legend>부모</legend>
+        <label class="inline"><input type="radio" name="share" value="all" {% if form.get('share', 'all') == 'all' %}checked{% endif %}> 둘 다 같음</label>
+        {% for p in parents %}
+        <label class="inline"><input type="radio" name="share" value="{{ p.id }}" {% if form.get('share') == p.id|string %}checked{% endif %}> {{ p.name }}만 같음</label>
+        {% endfor %}
+      </fieldset>
+      {% else %}
+      <p class="muted small">{{ parents[0].name }}님의 자녀로 함께 등록돼요.</p>
+      {% endif %}
+    {% else %}
+      <div class="panel">
+        <p class="small">형제자매는 같은 부모로 이어서 저장해요. {{ target.name }}님의 부모가 아직 없어서 함께 만들어요. 이름을 모르면 비워두세요.</p>
+        <div class="stack">
+          <label>아버지 이름 <input name="father_name" value="{{ form.get('father_name', '') }}" placeholder="이름 모름"></label>
+          <label>어머니 이름 <input name="mother_name" value="{{ form.get('mother_name', '') }}" placeholder="이름 모름"></label>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <button type="submit" {% if candidates %}class="secondary"{% endif %}>{% if candidates %}다른 사람이에요, 새로 추가{% else %}추가{% endif %}</button>
+</form>
+{% if popup %}
+<p><button type="button" class="link" data-close-dialog>취소</button></p>
+{% else %}
+<p><a href="{{ url_for('people.detail', pid=target.id) }}">취소</a></p>
+{% endif %}

@@ -136,6 +136,9 @@ ul.guide-list { list-style: none; padding: 0; margin: 0; display: flex; flex-dir
 .guide-item.disabled { color: var(--muted); background: #f6f4f0; font-weight: 500; }
 .guide-item.disabled small { width: 100%; }
 .guide-foot { margin: 16px 0 0; font-size: 0.9rem; }
+.form-title { font-size: 1.25rem; margin: 4px 0 12px; }
+.dialog-body .form-title { font-size: 1.1rem; margin-top: 0; }
+.dialog-body .kin { margin-top: -6px; }
 
 details { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
 summary { cursor: pointer; color: var(--muted); }

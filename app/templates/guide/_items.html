@@ -8,14 +8,14 @@
   {% for r in rows %}
   <li>
     {% if r.direct %}
-      <a class="guide-item" href="{{ r.direct }}">{{ r.item.label }}</a>
+      {% call step_link(r.direct, 'guide-item') %}{{ r.item.label }}{% endcall %}
     {% elif r.anchors %}
       {% call step_link(url_for('guide.anchors', cat=cat, key=r.item.key), 'guide-item') %}{{ r.item.label }} <small>{{ r.anchors | length }}명 중 선택</small>{% endcall %}
     {% else %}
       <div class="guide-item disabled">
         {{ r.item.label }}
         <small>먼저 <b>{{ r.need }}</b>을(를) 등록해야 해요{% if r.prereq %}:
-          {% for label, url, in_popup in r.prereq %}{% if in_popup %}{% call step_link(url) %}{{ label }}{% endcall %}{% else %}<a href="{{ url }}">{{ label }}</a>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+          {% for label, url, _ in r.prereq %}{% call step_link(url) %}{{ label }}{% endcall %}{% if not loop.last %}, {% endif %}{% endfor %}
         {% endif %}</small>
       </div>
     {% endif %}

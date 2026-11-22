@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, g, make_response, redirect, render_template, request, url_for
 from sqlalchemy import or_, select
 
 from .auth import login_required
@@ -277,14 +277,15 @@ def add(pid: int):
 
     def render(form, status=200, candidates=None):
         return render_template(
-            "people/add.html",
+            "people/_add_form.html" if is_popup() else "people/add.html",
+            popup=is_popup(),
             target=target,
             rel=rel,
             label=REL_LABELS[rel],
             form=form,
             candidates=candidates or [],
             guide=_guide_label(),
-        ), status
+        ), (200 if is_popup() else status)
 
     if request.method == "GET":
         return render(_prefill())
@@ -301,7 +302,7 @@ def add(pid: int):
         _create_relation(rel, target, other, kind, rel_status)
         db.session.commit()
         flash(f"{other.name}님을 {target.name}님의 {REL_LABELS[rel]}(으)로 연결했어요.")
-        return redirect(url_for("people.detail", pid=target.id))
+        return after_save(target)
 
     values, errors = read_person_form(form)
     if not errors and (reason := check_relation(rel, target, None, kind)):
@@ -322,7 +323,7 @@ def add(pid: int):
     _create_relation(rel, target, person, kind, rel_status)
     db.session.commit()
     flash(f"{person.name}님을 {target.name}님의 {REL_LABELS[rel]}(으)로 추가했어요.")
-    return redirect(url_for("people.detail", pid=target.id))
+    return after_save(target)
 
 
 @bp.route("/<int:pid>/add-sibling", methods=["GET", "POST"])
@@ -339,13 +340,14 @@ def add_sibling(pid: int):
 
     def render(form, status=200, candidates=None):
         return render_template(
-            "people/add_sibling.html",
+            "people/_add_sibling_form.html" if is_popup() else "people/add_sibling.html",
+            popup=is_popup(),
             target=target,
             parents=[p for p, _ in base],
             form=form,
             candidates=candidates or [],
             guide=_guide_label(),
-        ), status
+        ), (200 if is_popup() else status)
 
     if request.method == "GET":
         return render(_prefill())
@@ -382,7 +384,7 @@ def add_sibling(pid: int):
         flash(f"{sibling.name}님을 {target.name}님의 형제자매로 {verb}.")
         if made:
             flash(f"부모가 등록돼 있지 않아서 부모({', '.join(made)})를 함께 만들었어요. 나중에 정보를 고칠 수 있어요.")
-        return redirect(url_for("people.detail", pid=target.id))
+        return after_save(target)
 
     if link_to := form.get("link_to"):
         other = get_person_or_404(int(link_to)) if link_to.isdigit() else abort(400)
@@ -409,6 +411,20 @@ def add_sibling(pid: int):
     db.session.add(sibling)
     db.session.flush()
     return finish(sibling, "추가했어요")
+
+
+def is_popup() -> bool:
+    """가족 추가 팝업(htmx) 안에서 온 요청인지."""
+    return request.headers.get("HX-Request") == "true"
+
+
+def after_save(target: Person):
+    """팝업이면 지금 보던 화면을 새로고침(팝업 닫힘), 아니면 대상의 상세 화면으로."""
+    if is_popup():
+        resp = make_response("", 200)
+        resp.headers["HX-Refresh"] = "true"
+        return resp
+    return redirect(url_for("people.detail", pid=target.id))
 
 
 def _prefill() -> dict:
