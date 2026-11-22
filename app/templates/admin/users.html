@@ -6,7 +6,7 @@
 <h2>가입 승인 대기 ({{ pending | length }})</h2>
 {% for u in pending %}
 {% set same, others = options[u.id] %}
-<div class="card">
+<div class="panel">
   <strong>{{ u.name }}</strong>
   <span class="muted">{{ GENDERS.get(u.gender) }} · {{ u.birth_date | birth }}</span>
   <div class="row">

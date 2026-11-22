@@ -9,8 +9,10 @@
   {% if person.phone %}<dt>전화번호</dt><dd><a href="tel:{{ person.phone }}">{{ person.phone }}</a></dd>{% endif %}
   <dt>계정</dt><dd>{% if person.user %}가입함{% else %}<span class="muted">가입 안 함</span>{% endif %}</dd>
 </dl>
-{% if can_edit %}<p><a href="{{ url_for('people.edit', pid=person.id) }}">정보 수정</a></p>{% endif %}
-{% if not is_me and g.user.person_id %}<p><a href="{{ url_for('people.detail', pid=g.user.person_id) }}">← 나에게로</a></p>{% endif %}
+<p class="links">
+  <a href="{{ url_for('tree.view', main=person.id) }}">가계도에서 보기</a>
+  {% if can_edit %}<a href="{{ url_for('people.edit', pid=person.id) }}">정보 수정</a>{% endif %}
+</p>
 
 {% macro section(title, items, rel_type, detail_attr) %}
 <section class="relatives">

@@ -21,7 +21,7 @@ for suffix in ("", "-wal", "-shm"):
 
 from app import create_app  # noqa: E402
 from app.auth import hash_pin  # noqa: E402
-from app.models import Person, User, db  # noqa: E402
+from app.models import Person, Relation, User, db  # noqa: E402
 
 app = create_app()
 with app.app_context():
@@ -36,7 +36,40 @@ with app.app_context():
 
     # 누군가 먼저 등록해 둔 사람 (김민수 가입 때 "같은 사람일 수 있음"으로 보여야 함)
     db.session.add(Person(family_group_id=1, name="김민수", gender="male", birth_date="19850312", created_by=admin.id))
-    db.session.add(Person(family_group_id=1, name="박순자", gender="female", birth_date=None, is_deceased=True, created_by=admin.id))
+
+    # 가계도 확인용 3~4세대
+    def person(name, gender, birth=None, deceased=False):
+        p = Person(family_group_id=1, name=name, gender=gender, birth_date=birth,
+                   is_deceased=deceased, created_by=admin.id)
+        db.session.add(p)
+        db.session.flush()
+        return p
+
+    def rel(rtype, a, b, kind=None, status=None):
+        if rtype == "spouse":
+            a, b = sorted((a, b), key=lambda x: x.id)
+            status = status or "married"
+        else:
+            kind = kind or "biological"
+        db.session.add(Relation(family_group_id=1, type=rtype, person_a_id=a.id, person_b_id=b.id,
+                                kind=kind, status=status, created_by=admin.id))
+
+    grandpa = person("김덕배", "male", "19200505", deceased=True)
+    father = person("김영수", "male", "19450301", deceased=True)
+    mother = person("박순자", "female", None, deceased=True)
+    brother = person("김철수", "male", "19680815")
+    wife = person("이정희", "female", "19720110")
+    kid1 = person("김하늘", "female", "20000401")
+    kid2 = person("김바다", None, "20030909")  # 성별 모름
+    rel("parent_child", grandpa, father)
+    rel("spouse", father, mother)
+    for child in (admin_person, brother):
+        rel("parent_child", father, child)
+        rel("parent_child", mother, child)
+    rel("spouse", admin_person, wife)
+    for child in (kid1, kid2):
+        rel("parent_child", admin_person, child)
+        rel("parent_child", wife, child)
 
     for name, birth, gender in [("김민수", "19850312", "male"), ("이영희", "19900520", "female")]:
         db.session.add(User(name=name, birth_date=birth, gender=gender, pin_hash=hash_pin("123456")))

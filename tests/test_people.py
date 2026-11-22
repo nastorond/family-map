@@ -68,10 +68,7 @@ def test_parse_phone_rejects(raw):
 
 # --- 상세 / 홈 ---
 
-def test_home_redirects_to_my_detail(as_member, member):
-    res = as_member.get("/")
-    assert res.status_code == 302
-    assert res.headers["Location"].endswith(f"/people/{member}")
+def test_my_detail_page(as_member, member):
     page = as_member.get(f"/people/{member}").get_data(as_text=True)
     assert "홍길동" in page and ">나<" in page
 

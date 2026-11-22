@@ -74,10 +74,10 @@ button.link { background: none; color: var(--accent); padding: 0; text-decoratio
 
 .placeholder { margin-top: 24px; padding: 16px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
 
-.card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
-.card .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
-.card .row form { margin: 0; }
-.card .row select { flex: 1 1 200px; width: auto; }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.panel .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.panel .row form { margin: 0; }
+.panel .row select { flex: 1 1 200px; width: auto; }
 .badge { display: inline-block; font-size: 0.8rem; padding: 1px 8px; border-radius: 99px; background: #fff3d6; color: #7a5a00; }
 
 .small { font-size: 0.85rem; }
@@ -96,6 +96,38 @@ ul.people li a { font-weight: 600; }
 details { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
 summary { cursor: pointer; color: var(--muted); }
 details fieldset { margin-top: 8px; }
+
+.links { display: flex; gap: 16px; flex-wrap: wrap; }
+
+/* --- 가계도 --- */
+main.wide { max-width: none; padding: 0; }
+main.wide > .flash { margin: 12px 16px 0; }
+.tree-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 16px; }
+.tree-links { display: flex; gap: 14px; }
+.tree-hint { margin: 0; padding: 0 16px 8px; }
+#FamilyChart {
+  width: 100%;
+  height: calc(100vh - 150px);
+  height: calc(100dvh - 150px);
+  min-height: 360px;
+  border-top: 1px solid var(--line);
+}
+/* 라이브러리 CSS가 뒤에 로드되므로 id로 우선순위를 높인다 */
+#FamilyChart.f3 {
+  --background-color: #f3efe8;
+  --text-color: #1f1f1f;
+  --male-color: #b9d3dc;
+  --female-color: #ecc8cd;
+  --genderless-color: #dcdcdc;
+}
+/* 연결선은 라이브러리가 stroke="#fff"로 박아두므로 CSS로 덮는다 */
+#FamilyChart .link { stroke: #9a9183; stroke-width: 1.5px; }
+
+.f3 .card-gender-unknown .card-inner,
+.f3 .card-gender-unknown .card-body-rect { background-color: var(--genderless-color) !important; }
+.f3 .card-inner { font-size: 14px; line-height: 1.35; }
+.f3 .deceased { color: #6b6b6b; font-size: 12px; }
+.tree-error { padding: 16px; color: var(--error-fg); }
 
 table { width: 100%; border-collapse: collapse; }
 td, th { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
