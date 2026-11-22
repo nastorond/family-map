@@ -8,7 +8,7 @@ from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from .models import GENDERS, FamilyGroup, db
+from .models import GENDERS, PARENT_KINDS, SPOUSE_STATUSES, FamilyGroup, db
 from .validation import format_birth_date
 
 csrf = CSRFProtect()
@@ -55,15 +55,18 @@ def create_app(test_config: dict | None = None) -> Flask:
     db.init_app(app)
     csrf.init_app(app)
 
-    from . import admin, auth, cli, main
+    from . import admin, auth, cli, main, people
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
+    app.register_blueprint(people.bp)
     app.register_blueprint(admin.bp)
     cli.register(app)
 
     app.jinja_env.filters["birth"] = format_birth_date
-    app.jinja_env.globals["GENDERS"] = GENDERS
+    app.jinja_env.globals.update(
+        GENDERS=GENDERS, PARENT_KINDS=PARENT_KINDS, SPOUSE_STATUSES=SPOUSE_STATUSES
+    )
 
     with app.app_context():
         db.create_all()

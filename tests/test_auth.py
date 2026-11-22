@@ -140,7 +140,7 @@ def test_approve_as_new_person(app, client, admin):
     client.post("/logout")
     res = login(client, "홍길동", "19850312", "123456")
     assert res.status_code == 302
-    assert "홍길동님" in client.get("/").get_data(as_text=True)
+    assert "홍길동" in client.get("/", follow_redirects=True).get_data(as_text=True)
 
 
 def test_approve_links_existing_person_and_shows_candidate(app, client, admin):

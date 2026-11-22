@@ -80,5 +80,19 @@ button.link { background: none; color: var(--accent); padding: 0; text-decoratio
 .card .row select { flex: 1 1 200px; width: auto; }
 .badge { display: inline-block; font-size: 0.8rem; padding: 1px 8px; border-radius: 99px; background: #fff3d6; color: #7a5a00; }
 
+.small { font-size: 0.85rem; }
+
+.relatives { margin-top: 20px; }
+.section-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); }
+.section-head h2 { margin: 0 0 6px; }
+.section-head .add { font-weight: 600; text-decoration: none; }
+ul.people { list-style: none; padding: 0; margin: 0; }
+ul.people li { padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+ul.people li a { font-weight: 600; }
+
+details { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+summary { cursor: pointer; color: var(--muted); }
+details fieldset { margin-top: 8px; }
+
 table { width: 100%; border-collapse: collapse; }
 td, th { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_label, person_meta %}
+{% block title %}{{ person.name }} · 우리 가계도{% endblock %}
+{% block content %}
+<h1>{{ person_label(person) }}{% if is_me %} <span class="badge">나</span>{% endif %}</h1>
+<dl class="info">
+  <dt>성별</dt><dd>{{ GENDERS.get(person.gender, '모름') }}</dd>
+  <dt>생년월일</dt><dd>{{ person.birth_date | birth }}</dd>
+  {% if person.phone %}<dt>전화번호</dt><dd><a href="tel:{{ person.phone }}">{{ person.phone }}</a></dd>{% endif %}
+  <dt>계정</dt><dd>{% if person.user %}가입함{% else %}<span class="muted">가입 안 함</span>{% endif %}</dd>
+</dl>
+{% if can_edit %}<p><a href="{{ url_for('people.edit', pid=person.id) }}">정보 수정</a></p>{% endif %}
+{% if not is_me and g.user.person_id %}<p><a href="{{ url_for('people.detail', pid=g.user.person_id) }}">← 나에게로</a></p>{% endif %}
+
+{% macro section(title, items, rel_type, detail_attr) %}
+<section class="relatives">
+  <div class="section-head">
+    <h2>{{ title }}</h2>
+    {% if rel_type %}<a class="add" href="{{ url_for('people.add', pid=person.id, rel=rel_type) }}">+ 추가</a>{% endif %}
+  </div>
+  {% if items %}
+  <ul class="people">
+    {% for p, r in items %}
+    <li>
+      <a href="{{ url_for('people.detail', pid=p.id) }}">{{ person_label(p) }}</a>
+      <span class="muted">{{ person_meta(p) }}</span>
+      {% if r and detail_attr == 'kind' and r.kind != 'biological' %}<span class="badge">{{ PARENT_KINDS[r.kind] }}</span>{% endif %}
+      {% if r and detail_attr == 'status' and r.status != 'married' %}<span class="badge">{{ SPOUSE_STATUSES[r.status] }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">아직 없어요.</p>
+  {% endif %}
+</section>
+{% endmacro %}
+
+{{ section("부모", rel.parents, "parent", "kind") }}
+{{ section("배우자", rel.spouses, "spouse", "status") }}
+{{ section("자녀", rel.children, "child", "kind") }}
+{% if rel.siblings %}
+<section class="relatives">
+  <div class="section-head"><h2>형제자매</h2></div>
+  <ul class="people">
+    {% for p in rel.siblings %}
+    <li><a href="{{ url_for('people.detail', pid=p.id) }}">{{ person_label(p) }}</a> <span class="muted">{{ person_meta(p) }}</span></li>
+    {% endfor %}
+  </ul>
+  <p class="muted small">부모가 같은 사람을 계산해서 보여줘요. 형제자매를 추가하려면 부모 화면에서 자녀로 추가하세요.</p>
+</section>
+{% endif %}
+{% endblock %}

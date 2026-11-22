@@ -88,6 +88,9 @@ class Relation(db.Model):
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
+    person_a: Mapped[Person] = relationship(foreign_keys=[person_a_id])
+    person_b: Mapped[Person] = relationship(foreign_keys=[person_b_id])
+
 
 class User(db.Model):
     """로그인 계정. 가입 때 입력한 이름/생년월일/성별을 그대로 갖고,

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, person_fields %}
+{% block title %}{{ label }} 추가 · 우리 가계도{% endblock %}
+{% block content %}
+<h1>{{ target.name }}님의 {{ label }} 추가</h1>
+<form method="post" class="stack">
+  {{ csrf() }}
+  <input type="hidden" name="rel" value="{{ rel }}">
+  {{ person_fields(form) }}
+
+  <details {% if form.get('kind') not in (none, '', 'biological') or form.get('status') not in (none, '', 'married') %}open{% endif %}>
+    <summary>관계 세부 (기본: {% if rel == 'spouse' %}혼인 중{% else %}친생{% endif %})</summary>
+    {% if rel == 'spouse' %}
+    <fieldset>
+      {% for value, text in SPOUSE_STATUSES.items() %}
+      <label class="inline"><input type="radio" name="status" value="{{ value }}" {% if form.get('status', 'married') == value %}checked{% endif %}> {{ text }}</label>
+      {% endfor %}
+    </fieldset>
+    {% else %}
+    <fieldset>
+      {% for value, text in PARENT_KINDS.items() %}
+      <label class="inline"><input type="radio" name="kind" value="{{ value }}" {% if form.get('kind', 'biological') == value %}checked{% endif %}> {{ text }}</label>
+      {% endfor %}
+    </fieldset>
+    {% endif %}
+  </details>
+
+  <button type="submit">추가</button>
+</form>
+<p><a href="{{ url_for('people.detail', pid=target.id) }}">취소</a></p>
+{% endblock %}

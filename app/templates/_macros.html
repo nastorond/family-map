@@ -1,0 +1,30 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro person_label(p) -%}
+  {{ p.name }}{% if p.is_deceased %} <span class="muted">(고인)</span>{% endif %}
+{%- endmacro %}
+
+{% macro person_meta(p) -%}
+  {{ GENDERS.get(p.gender, '성별 모름') }} · {{ p.birth_date | birth }}
+{%- endmacro %}
+
+{# 사람 입력 칸. form은 dict 또는 request.form #}
+{% macro person_fields(form) %}
+  <label>이름
+    <input name="name" value="{{ form.get('name', '') }}" required>
+  </label>
+  <fieldset>
+    <legend>성별</legend>
+    {% for value, label in GENDERS.items() %}
+    <label class="inline"><input type="radio" name="gender" value="{{ value }}" {% if form.get('gender') == value %}checked{% endif %}> {{ label }}</label>
+    {% endfor %}
+    <label class="inline"><input type="radio" name="gender" value="" {% if not form.get('gender') %}checked{% endif %}> 모름</label>
+  </fieldset>
+  <label>생년월일 8자리 <span class="muted">(모르면 비워두세요)</span>
+    <input name="birth_date" value="{{ form.get('birth_date', '') }}" inputmode="numeric" maxlength="10" placeholder="19550101">
+  </label>
+  <label>전화번호 <span class="muted">(선택)</span>
+    <input name="phone" value="{{ form.get('phone', '') }}" inputmode="tel" maxlength="13" placeholder="010-1234-5678">
+  </label>
+  <label class="inline"><input type="checkbox" name="is_deceased" value="1" {% if form.get('is_deceased') == '1' %}checked{% endif %}> 돌아가신 분이에요</label>
+{% endmacro %}
