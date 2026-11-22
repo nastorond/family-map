@@ -171,6 +171,30 @@ def check_relation(rel: str, target: Person, other_id: int | None, kind: str | N
     return None
 
 
+def find_candidates(target: Person, name: str, birth_date: str | None) -> list[tuple[Person, str]]:
+    """같은 사람일 수 있는 기존 Person과 그 이유.
+
+    - 이름과 생년월일이 같음
+    - 이름이 같고 한쪽의 생년월일을 모름 (생년월일 모르는 고인이 중복되기 쉬워서)
+    """
+    rows = db.session.scalars(
+        select(Person)
+        .where(
+            Person.family_group_id == target.family_group_id,
+            Person.name == name,
+            Person.id != target.id,
+        )
+        .order_by(Person.id)
+    ).all()
+    result = []
+    for p in rows:
+        if birth_date and p.birth_date == birth_date:
+            result.append((p, "이름·생년월일 같음"))
+        elif not birth_date or not p.birth_date:
+            result.append((p, "이름 같음, 생년월일 확인 필요"))
+    return result
+
+
 # --- 화면 ---
 
 @bp.get("/<int:pid>")
@@ -195,9 +219,14 @@ def add(pid: int):
     if rel not in REL_LABELS:
         abort(400)
 
-    def render(form, status=200):
+    def render(form, status=200, candidates=None):
         return render_template(
-            "people/add.html", target=target, rel=rel, label=REL_LABELS[rel], form=form
+            "people/add.html",
+            target=target,
+            rel=rel,
+            label=REL_LABELS[rel],
+            form=form,
+            candidates=candidates or [],
         ), status
 
     if request.method == "GET":
@@ -205,6 +234,18 @@ def add(pid: int):
 
     form = request.form
     kind, rel_status = read_relation_detail(rel, form)
+
+    # 중복 후보 중 하나를 골라 기존 사람과 연결하는 경우
+    if link_to := form.get("link_to"):
+        other = get_person_or_404(int(link_to)) if link_to.isdigit() else abort(400)
+        if reason := check_relation(rel, target, other.id, kind):
+            flash(reason, "error")
+            return render(form, 400)
+        _create_relation(rel, target, other, kind, rel_status)
+        db.session.commit()
+        flash(f"{other.name}님을 {target.name}님의 {REL_LABELS[rel]}(으)로 연결했어요.")
+        return redirect(url_for("people.detail", pid=target.id))
+
     values, errors = read_person_form(form)
     if not errors and (reason := check_relation(rel, target, None, kind)):
         errors.append(reason)
@@ -212,6 +253,11 @@ def add(pid: int):
         for msg in errors:
             flash(msg, "error")
         return render(form, 400)
+
+    # 같은 사람일 수 있는 후보가 있으면 저장 전에 한 번 보여준다. 병합은 하지 않는다.
+    if not form.get("confirm_new"):
+        if candidates := find_candidates(target, values["name"], values["birth_date"]):
+            return render(form, 200, candidates)
 
     person = Person(family_group_id=target.family_group_id, created_by=g.user.id, **values)
     db.session.add(person)

@@ -145,6 +145,58 @@ def test_siblings_are_computed(app, as_member, member):
     assert "형제자매" in page and "동생" in page
 
 
+# --- 중복 후보 ---
+
+def test_duplicate_candidate_shown_before_saving(app, as_member, member):
+    add(as_member, member, "parent", name="박순자", gender="female", birth_date="19560303")
+    add(as_member, member, "child", name="아이")
+    child = person_by_name(app, "아이")
+
+    # 아이 화면에서 할머니를 다시 등록하려는 상황: 같은 이름+생년월일
+    res = add(as_member, child.id, "parent", name="박순자", gender="female", birth_date="19560303")
+    page = res.get_data(as_text=True)
+    assert res.status_code == 200
+    assert "같은 사람일 수 있는" in page and "이름·생년월일 같음" in page
+    with app.app_context():
+        assert len(db.session.scalars(select(Person).where(Person.name == "박순자")).all()) == 1
+
+
+def test_link_to_candidate(app, as_member, member):
+    add(as_member, member, "parent", name="아버지", gender="male")
+    father = person_by_name(app, "아버지")
+    add(as_member, member, "spouse", name="아내", gender="female")
+    wife = person_by_name(app, "아내")
+
+    res = as_member.post(f"/people/{wife.id}/add", data={"rel": "child", "link_to": str(member)})
+    assert res.status_code == 302
+    assert ("parent_child", "아내", "홍길동", "biological", None) in relations(app)
+
+    # 이미 있는 관계를 다시 걸면 거절
+    res = as_member.post(f"/people/{wife.id}/add", data={"rel": "child", "link_to": str(member)})
+    assert res.status_code == 400
+    # 자손을 부모로 걸면 거절
+    res = as_member.post(f"/people/{father.id}/add", data={"rel": "parent", "link_to": str(member)})
+    assert res.status_code == 400
+
+
+def test_confirm_new_creates_separate_person(app, as_member, member):
+    add(as_member, member, "parent", name="김철수", birth_date="19500101")
+    res = add(as_member, member, "child", name="김철수", birth_date="19500101", confirm_new="1")
+    assert res.status_code == 302
+    with app.app_context():
+        assert len(db.session.scalars(select(Person).where(Person.name == "김철수")).all()) == 2
+
+
+def test_name_only_candidate_when_birth_unknown(app, as_member, member):
+    add(as_member, member, "parent", name="박순자", is_deceased="1")
+    res = add(as_member, member, "spouse", name="박순자")
+    assert "생년월일 확인 필요" in res.get_data(as_text=True)
+    # 생년월일이 둘 다 있고 다르면 후보가 아니다
+    add(as_member, member, "child", name="이민호", birth_date="20100101")
+    res = add(as_member, member, "child", name="이민호", birth_date="20120202")
+    assert res.status_code == 302
+
+
 # --- 수정 권한 ---
 
 def test_member_can_edit_self_and_own_registrations(app, as_member, member):

@@ -1,11 +1,37 @@
 {% extends "base.html" %}
-{% from "_macros.html" import csrf, person_fields %}
+{% from "_macros.html" import csrf, person_fields, person_label, person_meta %}
 {% block title %}{{ label }} 추가 · 우리 가계도{% endblock %}
 {% block content %}
 <h1>{{ target.name }}님의 {{ label }} 추가</h1>
+
+{% if candidates %}
+<section class="card candidates">
+  <p><strong>이미 등록된 사람 중에 같은 사람일 수 있는 분이 있어요.</strong><br>
+  <span class="muted">같은 사람이면 연결하고, 다른 사람이면 아래에서 새로 추가하세요.</span></p>
+  <ul class="people">
+    {% for p, reason in candidates %}
+    <li>
+      <a href="{{ url_for('people.detail', pid=p.id) }}" target="_blank">{{ person_label(p) }}</a>
+      <span class="muted">{{ person_meta(p) }}</span>
+      <span class="badge">{{ reason }}</span>
+      <form method="post">
+        {{ csrf() }}
+        <input type="hidden" name="rel" value="{{ rel }}">
+        <input type="hidden" name="link_to" value="{{ p.id }}">
+        {% if form.get('kind') %}<input type="hidden" name="kind" value="{{ form.get('kind') }}">{% endif %}
+        {% if form.get('status') %}<input type="hidden" name="status" value="{{ form.get('status') }}">{% endif %}
+        <button type="submit">이 사람으로 연결</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <form method="post" class="stack">
   {{ csrf() }}
   <input type="hidden" name="rel" value="{{ rel }}">
+  {% if candidates %}<input type="hidden" name="confirm_new" value="1">{% endif %}
   {{ person_fields(form) }}
 
   <details {% if form.get('kind') not in (none, '', 'biological') or form.get('status') not in (none, '', 'married') %}open{% endif %}>
@@ -25,7 +51,7 @@
     {% endif %}
   </details>
 
-  <button type="submit">추가</button>
+  <button type="submit" {% if candidates %}class="secondary"{% endif %}>{% if candidates %}다른 사람이에요, 새로 추가{% else %}추가{% endif %}</button>
 </form>
 <p><a href="{{ url_for('people.detail', pid=target.id) }}">취소</a></p>
 {% endblock %}

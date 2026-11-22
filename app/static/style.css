@@ -90,6 +90,9 @@ ul.people { list-style: none; padding: 0; margin: 0; }
 ul.people li { padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 ul.people li a { font-weight: 600; }
 
+.candidates { border-color: #e9c46a; background: #fffaf0; }
+.candidates li form { margin-left: auto; }
+
 details { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
 summary { cursor: pointer; color: var(--muted); }
 details fieldset { margin-top: 8px; }
