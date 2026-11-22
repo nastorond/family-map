@@ -283,10 +283,11 @@ def add(pid: int):
             label=REL_LABELS[rel],
             form=form,
             candidates=candidates or [],
+            guide=_guide_label(),
         ), status
 
     if request.method == "GET":
-        return render({})
+        return render(_prefill())
 
     form = request.form
     kind, rel_status = read_relation_detail(rel, form)
@@ -343,10 +344,11 @@ def add_sibling(pid: int):
             parents=[p for p, _ in base],
             form=form,
             candidates=candidates or [],
+            guide=_guide_label(),
         ), status
 
     if request.method == "GET":
-        return render({})
+        return render(_prefill())
 
     form = request.form
     if base:
@@ -407,6 +409,21 @@ def add_sibling(pid: int):
     db.session.add(sibling)
     db.session.flush()
     return finish(sibling, "추가했어요")
+
+
+def _prefill() -> dict:
+    """가족 추가 팝업에서 넘어온 성별을 미리 골라둔다."""
+    gender = request.args.get("gender")
+    return {"gender": gender} if gender in GENDERS else {}
+
+
+def _guide_label() -> str | None:
+    """팝업에서 고른 유형 이름 (예: 큰아버지·작은아버지)."""
+    from .guide import find_item
+
+    key = request.values.get("guide")
+    found = find_item(key, g.user.person.gender) if key else None
+    return found[2].label if found else None
 
 
 def _create_relation(rel: str, target: Person, other: Person, kind, status) -> None:

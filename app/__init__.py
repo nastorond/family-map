@@ -55,10 +55,11 @@ def create_app(test_config: dict | None = None) -> Flask:
     db.init_app(app)
     csrf.init_app(app)
 
-    from . import admin, auth, cli, main, people, tree
+    from . import admin, auth, cli, guide, main, people, tree
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(main.bp)
+    app.register_blueprint(guide.bp)
     app.register_blueprint(people.bp)
     app.register_blueprint(tree.bp)
     app.register_blueprint(admin.bp)

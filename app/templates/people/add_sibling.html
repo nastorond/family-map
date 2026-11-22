@@ -3,6 +3,7 @@
 {% block title %}형제자매 추가 · 우리 가계도{% endblock %}
 {% block content %}
 <h1>{{ target.name }}님의 형제자매 추가</h1>
+{% if guide %}<p class="kin">나에게 <strong>{{ guide }}</strong></p>{% endif %}
 <p class="muted">형, 오빠, 누나, 언니, 동생 모두 여기서 추가해요. 성별과 생년월일을 넣으면 호칭이 자동으로 붙어요.</p>
 
 {% macro keep_share() %}
@@ -35,6 +36,7 @@
 
 <form method="post" class="stack">
   {{ csrf() }}
+  {% if request.values.get('guide') %}<input type="hidden" name="guide" value="{{ request.values.get('guide') }}">{% endif %}
   {% if candidates %}<input type="hidden" name="confirm_new" value="1">{{ keep_share() }}{% endif %}
   {{ person_fields(form) }}
 

@@ -13,7 +13,7 @@
     {% if g.user %}
     <nav>
       <a href="{{ url_for('tree.view') }}">가계도</a>
-      <a href="{{ url_for('people.index') }}">가족 추가</a>
+      <a href="{{ url_for('guide.categories') }}" hx-get="{{ url_for('guide.categories') }}" hx-target="#add-dialog-body">가족 추가</a>
       {% if g.user.person_id %}<a href="{{ url_for('people.detail', pid=g.user.person_id) }}">내 정보</a>{% endif %}
       {% if g.user.role == 'admin' %}<a href="{{ url_for('admin.users') }}">관리</a>{% endif %}
       <form method="post" action="{{ url_for('auth.logout') }}">
@@ -31,5 +31,16 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
+  {% if g.user %}
+  <dialog id="add-dialog" class="dialog" aria-labelledby="add-dialog-title">
+    <div class="dialog-head">
+      <strong id="add-dialog-title">가족 추가</strong>
+      <button type="button" class="dialog-close" aria-label="닫기" data-close-dialog>✕</button>
+    </div>
+    <div id="add-dialog-body" class="dialog-body"></div>
+  </dialog>
+  <script src="{{ url_for('static', filename='vendor/htmx-2.0.4.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='dialog.js') }}"></script>
+  {% endif %}
 </body>
 </html>

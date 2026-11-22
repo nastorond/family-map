@@ -1,0 +1,4 @@
+{# 팝업 안에서 다음 단계를 불러오는 링크. JS가 없으면 그냥 페이지 이동. #}
+{% macro step_link(url, cls='') -%}
+<a href="{{ url }}" hx-get="{{ url }}" hx-target="#add-dialog-body" class="{{ cls }}">{{ caller() }}</a>
+{%- endmacro %}

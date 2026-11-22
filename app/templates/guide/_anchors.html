@@ -1,0 +1,18 @@
+{% from "guide/_macros.html" import step_link %}
+<div class="guide-nav">
+  {% call step_link(url_for('guide.items', cat=cat), 'guide-back') %}← {{ name }}{% endcall %}
+  <span class="guide-crumb">{{ item.label }}</span>
+</div>
+{% if people %}
+<p class="guide-q">{{ question }}</p>
+<ul class="guide-list">
+  {% for p, kin, url in people %}
+  <li><a class="guide-item" href="{{ url }}">
+    {{ p.name }}{% if p.is_deceased %} (고인){% endif %}
+    {% if kin and kin.tokens %}<span class="title">{{ kin.title }}</span>{% endif %}
+  </a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="guide-q">먼저 <b>{{ need }}</b>을(를) 등록해야 해요.</p>
+{% endif %}

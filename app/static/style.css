@@ -106,6 +106,37 @@ ul.pick-list { list-style: none; padding: 0; margin: 0; }
 .pick-actions a.plain { background: none; border: 1px solid var(--line); color: var(--accent); justify-content: center; }
 .kin { margin: -8px 0 12px; }
 
+/* --- 가족 추가 팝업 --- */
+.dialog {
+  width: min(520px, calc(100vw - 24px));
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+.dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+.dialog-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); background: #fff; position: sticky; top: 0; }
+.dialog-close { background: none; color: var(--muted); padding: 4px 8px; font-size: 1.1rem; }
+.dialog-body { padding: 14px 16px 18px; overflow-y: auto; }
+.guide-q { font-weight: 700; margin: 4px 0 12px; }
+.guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.guide-card { display: flex; flex-direction: column; gap: 2px; padding: 16px 14px; border-radius: 12px; background: #fff; border: 1px solid var(--line); color: var(--fg); text-decoration: none; }
+.guide-card strong { font-size: 1.1rem; }
+.guide-card small { color: var(--muted); }
+.guide-card:hover, .guide-item:hover { border-color: var(--accent); }
+.guide-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.guide-back { text-decoration: none; font-weight: 600; }
+.guide-crumb { color: var(--muted); font-size: 0.9rem; }
+ul.guide-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.guide-item { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 12px 14px; border-radius: 10px; background: #fff; border: 1px solid var(--line); color: var(--fg); text-decoration: none; font-weight: 600; }
+.guide-item small { font-weight: 400; color: var(--muted); }
+.guide-item.disabled { color: var(--muted); background: #f6f4f0; font-weight: 500; }
+.guide-item.disabled small { width: 100%; }
+.guide-foot { margin: 16px 0 0; font-size: 0.9rem; }
+
 details { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
 summary { cursor: pointer; color: var(--muted); }
 details fieldset { margin-top: 8px; }

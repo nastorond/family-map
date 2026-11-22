@@ -1,0 +1,24 @@
+{% from "guide/_macros.html" import step_link %}
+<div class="guide-nav">
+  {% call step_link(url_for('guide.categories'), 'guide-back') %}← 처음으로{% endcall %}
+  <span class="guide-crumb">{{ name }}</span>
+</div>
+<p class="guide-q">어떤 가족을 추가할까요?</p>
+<ul class="guide-list">
+  {% for r in rows %}
+  <li>
+    {% if r.direct %}
+      <a class="guide-item" href="{{ r.direct }}">{{ r.item.label }}</a>
+    {% elif r.anchors %}
+      {% call step_link(url_for('guide.anchors', cat=cat, key=r.item.key), 'guide-item') %}{{ r.item.label }} <small>{{ r.anchors | length }}명 중 선택</small>{% endcall %}
+    {% else %}
+      <div class="guide-item disabled">
+        {{ r.item.label }}
+        <small>먼저 <b>{{ r.need }}</b>을(를) 등록해야 해요{% if r.prereq %}:
+          {% for label, url, in_popup in r.prereq %}{% if in_popup %}{% call step_link(url) %}{{ label }}{% endcall %}{% else %}<a href="{{ url }}">{{ label }}</a>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% endif %}</small>
+      </div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>

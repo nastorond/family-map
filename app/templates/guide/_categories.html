@@ -1,0 +1,10 @@
+{% from "guide/_macros.html" import step_link %}
+<p class="guide-q">어느 쪽 가족인가요?</p>
+<div class="guide-grid">
+  {% for key, name, desc in cats %}
+  {% call step_link(url_for('guide.items', cat=key), 'guide-card') %}
+    <strong>{{ name }}</strong><small>{{ desc }}</small>
+  {% endcall %}
+  {% endfor %}
+</div>
+<p class="guide-foot"><a href="{{ url_for('people.index') }}">목록에서 사람을 직접 골라 붙이기</a></p>
