@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_label, person_meta %}
+{% block title %}가족 추가 · 우리 가계도{% endblock %}
+{% block content %}
+<h1>가족 추가</h1>
+<p class="muted">누구에게 붙일지 고르세요. 예) 삼촌을 넣으려면 <strong>아버지</strong>를 눌러 형제자매 추가, 사촌은 <strong>삼촌</strong>을 눌러 자녀 추가.</p>
+
+<input type="search" id="pick-search" class="search" placeholder="이름이나 호칭으로 찾기 (예: 이모, 김철수)" autocomplete="off">
+
+<ul class="pick-list" id="pick-list">
+  {% for p, kin in rows %}
+  {% set who = kin.title if kin else p.name %}
+  <li class="pick" data-search="{{ p.name }} {{ kin.title if kin else '' }}">
+    <details>
+      <summary>
+        <span class="pick-name">{{ person_label(p) }}</span>
+        {% if kin %}<span class="title">{{ kin.title }}</span>{% if chon_label(kin) %}<span class="muted small">{{ chon_label(kin) }}</span>{% endif %}
+        {% else %}<span class="badge">나와 연결 안 됨</span>{% endif %}
+        <span class="muted small">{{ person_meta(p) }}</span>
+      </summary>
+      <div class="pick-actions">
+        <a href="{{ url_for('people.add', pid=p.id, rel='parent') }}">부모 추가<small>{{ who }}의 부모</small></a>
+        <a href="{{ url_for('people.add', pid=p.id, rel='spouse') }}">배우자 추가<small>{{ who }}의 배우자</small></a>
+        <a href="{{ url_for('people.add_sibling', pid=p.id) }}">형제자매 추가<small>{{ who }}의 형제자매</small></a>
+        <a href="{{ url_for('people.add', pid=p.id, rel='child') }}">자녀 추가<small>{{ who }}의 자녀</small></a>
+        <a class="plain" href="{{ url_for('people.detail', pid=p.id) }}">상세 보기</a>
+      </div>
+    </details>
+  </li>
+  {% endfor %}
+</ul>
+<p class="muted" id="pick-empty" hidden>찾는 사람이 없어요. 먼저 그 사람과 가까운 사람에게 추가해 주세요.</p>
+<script src="{{ url_for('static', filename='pick.js') }}"></script>
+{% endblock %}

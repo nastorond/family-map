@@ -2,6 +2,8 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from sqlalchemy import or_, select
 
 from .auth import login_required
+from .kinship import chon_label, kinships_from
+from .kinship import sibling_word as sibling_title
 from .models import GENDERS, PARENT_KINDS, SPOUSE_STATUSES, Person, Relation, User, db
 from .validation import parse_birth_date, parse_phone
 
@@ -48,19 +50,6 @@ def relatives(person: Person) -> dict:
         "children": sorted(children, key=lambda x: _birth_key(x[0])),
         "siblings": siblings_of(person, parents),
     }
-
-
-def sibling_title(me: Person, sib: Person) -> str:
-    """me가 sib을 부르는 말. 성별이나 나이 순서를 모르면 '형제자매'."""
-    if not (me.gender and sib.gender and me.birth_date and sib.birth_date):
-        return {"male": "남자 형제", "female": "여자 형제"}.get(sib.gender, "형제자매")
-    if sib.birth_date == me.birth_date:
-        return {"male": "남자 형제", "female": "여자 형제"}[sib.gender]
-    if sib.birth_date < me.birth_date:
-        if sib.gender == "male":
-            return "형" if me.gender == "male" else "오빠"
-        return "누나" if me.gender == "male" else "언니"
-    return "남동생" if sib.gender == "male" else "여동생"
 
 
 def siblings_of(person: Person, parents: list) -> list[tuple[Person, str, str | None]]:
@@ -239,15 +228,40 @@ def find_candidates(target: Person, name: str, birth_date: str | None) -> list[t
 
 # --- 화면 ---
 
+@bp.get("")
+@login_required
+def index():
+    """가족 추가: 집안 사람 아무나 골라서 그 사람의 부모/배우자/형제자매/자녀를 붙인다."""
+    me = g.user.person
+    kins = kinships_from(me)
+    people = db.session.scalars(select(Person).where(Person.family_group_id == group_id())).all()
+
+    rank = {"P": 0, "S": 1, "B": 2, "C": 3}
+
+    def sort_key(p: Person):
+        kin = kins.get(p.id)
+        if kin is None:  # 나와 이어지지 않은 사람은 맨 뒤
+            return (1, 0, [], p.name)
+        # 가까운 순, 같은 거리면 부모 > 배우자 > 형제 > 자녀 쪽 순
+        return (0, len(kin.tokens), [rank[t] for t in kin.tokens], _birth_key(p))
+
+    rows = [(p, kins.get(p.id)) for p in sorted(people, key=sort_key)]
+    return render_template("people/index.html", rows=rows, chon_label=chon_label)
+
+
 @bp.get("/<int:pid>")
 @login_required
 def detail(pid: int):
     person = get_person_or_404(pid)
+    is_me = person.id == g.user.person_id
+    kin = None if is_me else kinships_from(g.user.person).get(person.id)
     return render_template(
         "people/detail.html",
         person=person,
         rel=relatives(person),
-        is_me=person.id == g.user.person_id,
+        is_me=is_me,
+        kin=kin,
+        chon=chon_label(kin) if kin else "",
         can_edit=can_edit(g.user, person),
     )
 

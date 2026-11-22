@@ -3,6 +3,8 @@
 {% block title %}{{ person.name }} · 우리 가계도{% endblock %}
 {% block content %}
 <h1>{{ person_label(person) }}{% if is_me %} <span class="badge">나</span>{% endif %}</h1>
+{% if kin %}<p class="kin">나에게 <strong>{{ kin.title }}</strong>{% if chon %} · {{ chon }}{% endif %}</p>
+{% elif not is_me %}<p class="kin muted">나와 연결된 관계가 아직 없어요.</p>{% endif %}
 <dl class="info">
   <dt>성별</dt><dd>{{ GENDERS.get(person.gender, '모름') }}</dd>
   <dt>생년월일</dt><dd>{{ person.birth_date | birth }}</dd>

@@ -11,6 +11,7 @@ from flask import Blueprint, g, jsonify, render_template, request, url_for
 from sqlalchemy import select
 
 from .auth import login_required
+from .kinship import kinships_from
 from .models import Person, Relation, db
 from .people import get_person_or_404, group_id
 
@@ -19,7 +20,9 @@ bp = Blueprint("tree", __name__, url_prefix="/tree")
 PARENT_PRIORITY = {"biological": 0, "adoptive": 1, "step": 2}
 
 
-def build_tree_data(gid: int) -> list[dict]:
+def build_tree_data(gid: int, kins: dict | None = None) -> list[dict]:
+    """kins: {person_id: Kin} — 있으면 카드에 나 기준 호칭을 붙인다."""
+    kins = kins or {}
     persons = db.session.scalars(select(Person).where(Person.family_group_id == gid)).all()
     rels = db.session.scalars(select(Relation).where(Relation.family_group_id == gid)).all()
 
@@ -66,6 +69,7 @@ def build_tree_data(gid: int) -> list[dict]:
                     "name": p.name,
                     "birth": p.birth_date[:4] if p.birth_date else "",
                     "deceased": p.is_deceased,
+                    "title": kins[p.id].title if p.id in kins and kins[p.id].tokens else "",
                 },
                 "rels": {
                     "parents": [str(x) for x in parents.get(p.id, [])],
@@ -93,4 +97,4 @@ def view():
 @bp.get("/data")
 @login_required
 def data():
-    return jsonify(build_tree_data(group_id()))
+    return jsonify(build_tree_data(group_id(), kinships_from(g.user.person)))

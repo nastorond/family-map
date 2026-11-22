@@ -89,10 +89,22 @@ button.link { background: none; color: var(--accent); padding: 0; text-decoratio
 ul.people { list-style: none; padding: 0; margin: 0; }
 ul.people li { padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 ul.people li a { font-weight: 600; }
-ul.people .title { font-size: 0.85rem; color: var(--accent); background: var(--ok-bg); padding: 1px 8px; border-radius: 99px; }
+.title { font-size: 0.85rem; color: var(--accent); background: var(--ok-bg); padding: 1px 8px; border-radius: 99px; }
 
 .candidates { border-color: #e9c46a; background: #fffaf0; }
 .candidates li form { margin-left: auto; }
+
+.search { margin: 4px 0 12px; }
+ul.pick-list { list-style: none; padding: 0; margin: 0; }
+.pick details { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 0; margin-bottom: 8px; }
+.pick summary { list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 12px 14px; color: var(--fg); }
+.pick summary::-webkit-details-marker { display: none; }
+.pick-name { font-weight: 600; }
+.pick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 14px; }
+.pick-actions a { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 8px; background: var(--ok-bg); color: var(--ok-fg); text-decoration: none; font-weight: 600; }
+.pick-actions a small { font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+.pick-actions a.plain { background: none; border: 1px solid var(--line); color: var(--accent); justify-content: center; }
+.kin { margin: -8px 0 12px; }
 
 details { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
 summary { cursor: pointer; color: var(--muted); }

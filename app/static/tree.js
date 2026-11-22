@@ -36,7 +36,8 @@
             return esc(d.data.name) + (d.data.deceased ? ' <span class="deceased">(고인)</span>' : "");
           },
           function (d) {
-            return esc(d.data.birth);
+            var parts = [d.data.title, d.data.birth].filter(Boolean);
+            return esc(parts.join(" · "));
           },
         ])
         .setOnCardUpdate(function (d) {
