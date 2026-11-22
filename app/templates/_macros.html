@@ -20,10 +20,10 @@
     {% endfor %}
     <label class="inline"><input type="radio" name="gender" value="" {% if not form.get('gender') %}checked{% endif %}> 모름</label>
   </fieldset>
-  <label>생년월일 8자리 <span class="muted">(모르면 비워두세요)</span>
+  <label><span>생년월일 8자리 <span class="muted">(모르면 비워두세요)</span></span>
     <input name="birth_date" value="{{ form.get('birth_date', '') }}" inputmode="numeric" maxlength="10" placeholder="19550101">
   </label>
-  <label>전화번호 <span class="muted">(선택)</span>
+  <label><span>전화번호 <span class="muted">(선택)</span></span>
     <input name="phone" value="{{ form.get('phone', '') }}" inputmode="tel" maxlength="13" placeholder="010-1234-5678">
   </label>
   <label class="inline"><input type="checkbox" name="is_deceased" value="1" {% if form.get('is_deceased') == '1' %}checked{% endif %}> 돌아가신 분이에요</label>
