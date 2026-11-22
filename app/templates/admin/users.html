@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}관리 · 우리 가계도{% endblock %}
+{% block content %}
+<h1>관리</h1>
+
+<h2>가입 승인 대기 ({{ pending | length }})</h2>
+{% for u in pending %}
+{% set same, others = options[u.id] %}
+<div class="card">
+  <strong>{{ u.name }}</strong>
+  <span class="muted">{{ GENDERS.get(u.gender) }} · {{ u.birth_date | birth }}</span>
+  <div class="row">
+    <form method="post" action="{{ url_for('admin.approve', uid=u.id) }}" class="row">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <select name="target" aria-label="연결할 사람">
+        {% for p in same %}
+        <option value="{{ p.id }}" {% if loop.first %}selected{% endif %}>★ 같은 사람일 수 있음: {{ p.name }} ({{ p.birth_date | birth }})</option>
+        {% endfor %}
+        <option value="new" {% if not same %}selected{% endif %}>새 사람으로 등록</option>
+        {% for p in others %}
+        <option value="{{ p.id }}">기존 사람에 연결: {{ p.name }} ({{ p.birth_date | birth }})</option>
+        {% endfor %}
+      </select>
+      <button type="submit">승인</button>
+    </form>
+    <form method="post" action="{{ url_for('admin.reject', uid=u.id) }}" onsubmit="return confirm('이 가입 신청을 거절할까요?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="secondary">거절</button>
+    </form>
+  </div>
+  {% if same %}<p><span class="badge">이름·생년월일이 같은 사람이 이미 있어요</span></p>{% endif %}
+</div>
+{% else %}
+<p class="muted">대기 중인 신청이 없어요.</p>
+{% endfor %}
+
+<h2>승인된 계정 ({{ approved | length }})</h2>
+<table>
+  <tbody>
+  {% for u in approved %}
+    <tr>
+      <td>{{ u.name }}{% if u.role == 'admin' %} <span class="badge">관리자</span>{% endif %}</td>
+      <td class="muted">{{ u.birth_date | birth }}</td>
+      <td>
+        {% if u.is_locked(now) %}
+        <form method="post" action="{{ url_for('admin.unlock', uid=u.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="secondary">잠금 해제</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

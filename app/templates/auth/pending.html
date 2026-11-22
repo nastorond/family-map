@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}승인 대기 · 우리 가계도{% endblock %}
+{% block content %}
+<h1>승인 대기 중</h1>
+<p>{{ name }}님의 가입 신청을 받았어요. 관리자가 확인하면 로그인할 수 있어요.</p>
+<p><a href="{{ url_for('auth.login') }}">로그인 화면으로</a></p>
+{% endblock %}

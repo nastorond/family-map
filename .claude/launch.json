@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "family-dev",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "$env:FLASK_DEBUG='1'; $env:COOKIE_SECURE='0'; $env:DATABASE_PATH=\"$PWD\\instance\\preview.db\"; .\\.venv\\Scripts\\python -m flask --app wsgi run --port 5000"
+      ],
+      "port": 5000
+    }
+  ]
+}

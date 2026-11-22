@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}가입 · 우리 가계도{% endblock %}
+{% block content %}
+<h1>가입</h1>
+<p class="muted">가입하면 관리자가 확인한 뒤에 쓸 수 있어요.</p>
+<form method="post" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>이름
+    <input name="name" value="{{ form.get('name', '') }}" required autocomplete="name">
+  </label>
+  <fieldset>
+    <legend>성별</legend>
+    {% for value, label in GENDERS.items() %}
+    <label class="inline"><input type="radio" name="gender" value="{{ value }}" {% if form.get('gender') == value %}checked{% endif %} required> {{ label }}</label>
+    {% endfor %}
+  </fieldset>
+  <label>생년월일 8자리
+    <input name="birth_date" value="{{ form.get('birth_date', '') }}" inputmode="numeric" maxlength="10" placeholder="19850312" required>
+  </label>
+  <label>PIN (숫자 6자리)
+    <input name="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" required>
+  </label>
+  <label>PIN 확인
+    <input name="pin_confirm" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" required>
+  </label>
+  <button type="submit">가입 신청</button>
+</form>
+<p><a href="{{ url_for('auth.login') }}">이미 가입했어요</a></p>
+{% endblock %}
