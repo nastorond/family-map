@@ -27,9 +27,13 @@ def _sqlite_pragmas(dbapi_conn, _record):
 
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__, instance_relative_config=True)
-    os.makedirs(app.instance_path, exist_ok=True)
 
-    db_path = os.environ.get("DATABASE_PATH") or os.path.join(app.instance_path, "family.db")
+    # 운영(Docker)에서는 DATABASE_PATH=/data/... 를 쓰므로 instance 폴더를 만들지 않는다.
+    # (컨테이너가 /app에 쓰기 권한이 없는 uid로 돌 수 있음)
+    db_path = os.environ.get("DATABASE_PATH")
+    if not db_path:
+        os.makedirs(app.instance_path, exist_ok=True)
+        db_path = os.path.join(app.instance_path, "family.db")
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY"),
         SQLALCHEMY_DATABASE_URI=f"sqlite:///{db_path}",
