@@ -146,6 +146,18 @@ details fieldset { margin-top: 8px; }
 
 .links { display: flex; gap: 16px; flex-wrap: wrap; }
 
+/* 관계 관리 / 삭제 */
+.row-manage { margin-left: auto; background: none; border: 0; padding: 0; }
+.row-manage summary { font-size: 0.85rem; color: var(--muted); text-decoration: underline; }
+.row-manage[open] { flex-basis: 100%; margin-left: 0; margin-top: 6px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+.row-manage form { margin: 8px 0 0; }
+.row-manage-form { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; }
+.small-btn { padding: 6px 12px; font-size: 0.9rem; }
+button.danger-link { background: none; color: var(--error-fg); padding: 0; text-decoration: underline; font-size: 0.9rem; }
+.danger-zone { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--line); }
+.danger-zone form { margin: 0; }
+button.danger { background: #fff; color: var(--error-fg); border: 1px solid #e3b4ad; }
+
 /* --- 가계도 --- */
 main.wide { max-width: none; padding: 0; }
 main.wide > .flash { margin: 12px 16px 0; }

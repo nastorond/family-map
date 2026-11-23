@@ -38,6 +38,18 @@ def get_person_or_404(pid: int) -> Person:
     return person
 
 
+def can_manage_relation(user: User, rel: Relation) -> bool:
+    """관계 끊기/세부 바꾸기: 그 관계를 만든 사람과 관리자."""
+    return user.role == "admin" or (rel.created_by is not None and rel.created_by == user.id)
+
+
+def can_delete_person(user: User, person: Person) -> bool:
+    """사람 삭제: 등록한 사람과 관리자. 가입한 계정이 연결된 사람은 지울 수 없다."""
+    if person.user is not None:
+        return False
+    return user.role == "admin" or (person.created_by is not None and person.created_by == user.id)
+
+
 def can_edit(user: User, person: Person) -> bool:
     """관리자는 전부, 일반 사용자는 본인과 자기가 등록한 사람만."""
     return user.role == "admin" or person.id == user.person_id or person.created_by == user.id
@@ -284,6 +296,8 @@ def detail(pid: int):
         kin=kin,
         chon=chon_label(kin) if kin else "",
         can_edit=can_edit(g.user, person),
+        can_delete=can_delete_person(g.user, person),
+        can_manage=lambda r: can_manage_relation(g.user, r),
     )
 
 
@@ -506,3 +520,89 @@ def edit(pid: int):
     db.session.commit()
     flash("저장했어요.")
     return redirect(url_for("people.detail", pid=person.id))
+
+
+# --- 되돌리기: 관계 끊기, 관계 세부 바꾸기, 사람 삭제 ---
+
+def _relation_or_404(rid: int) -> Relation:
+    rel = db.session.get(Relation, rid)
+    if rel is None or rel.family_group_id != group_id():
+        abort(404)
+    visible = visible_ids()
+    if visible is not None and not {rel.person_a_id, rel.person_b_id} <= visible:
+        abort(404)
+    return rel
+
+
+def _back(default_pid: int):
+    """돌아갈 상세 화면. 폼의 back 값이 보이는 사람일 때만 따른다."""
+    back = request.form.get("back", "")
+    pid = int(back) if back.isdigit() else default_pid
+    visible = visible_ids()
+    if visible is not None and pid not in visible:
+        pid = default_pid
+    return redirect(url_for("people.detail", pid=pid))
+
+
+@bp.post("/relations/<int:rid>/delete")
+@login_required
+def delete_relation(rid: int):
+    """관계만 끊는다. 사람은 그대로 남는다."""
+    rel = _relation_or_404(rid)
+    if not can_manage_relation(g.user, rel):
+        abort(403)
+    a, b = rel.person_a.name, rel.person_b.name
+    default = rel.person_a_id
+    db.session.delete(rel)
+    db.session.commit()
+    flash(f"{a}님과 {b}님의 연결을 끊었어요.")
+    return _back(default)
+
+
+@bp.post("/relations/<int:rid>/update")
+@login_required
+def update_relation(rid: int):
+    """친생/입양/의붓, 혼인 중/이혼/사별을 바꾼다."""
+    rel = _relation_or_404(rid)
+    if not can_manage_relation(g.user, rel):
+        abort(403)
+    if rel.type == "parent_child":
+        kind = request.form.get("kind", "")
+        if kind not in PARENT_KINDS:
+            abort(400)
+        if kind == "biological" and rel.kind != "biological" and _bio_parent_count(rel.person_b_id) >= 2:
+            flash("친생 부모는 두 명까지만 등록할 수 있어요.", "error")
+            return _back(rel.person_b_id)
+        rel.kind = kind
+        label = PARENT_KINDS[kind]
+    else:
+        status = request.form.get("status", "")
+        if status not in SPOUSE_STATUSES:
+            abort(400)
+        rel.status = status
+        label = SPOUSE_STATUSES[status]
+    db.session.commit()
+    flash(f"{rel.person_a.name}님과 {rel.person_b.name}님의 관계를 '{label}'(으)로 바꿨어요.")
+    return _back(rel.person_a_id)
+
+
+@bp.post("/<int:pid>/delete")
+@login_required
+def delete_person(pid: int):
+    """사람과 그 사람의 관계를 모두 지운다. 가입한 계정이 연결된 사람은 지울 수 없다."""
+    person = get_person_or_404(pid)
+    if person.user is not None:
+        flash("가입한 계정이 연결된 사람은 지울 수 없어요.", "error")
+        return redirect(url_for("people.detail", pid=person.id))
+    if not can_delete_person(g.user, person):
+        abort(403)
+    name = person.name
+    rels = db.session.scalars(
+        select(Relation).where(or_(Relation.person_a_id == pid, Relation.person_b_id == pid))
+    ).all()
+    for r in rels:
+        db.session.delete(r)
+    db.session.delete(person)
+    db.session.commit()
+    flash(f"{name}님을 삭제했어요." + (f" 연결된 관계 {len(rels)}개도 함께 지웠어요." if rels else ""))
+    return redirect(url_for("tree.view"))
