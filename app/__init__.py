@@ -2,8 +2,9 @@ import os
 import sqlite3
 from datetime import timedelta
 
-from flask import Flask
+from flask import Flask, flash, make_response, redirect, request
 from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -58,6 +59,20 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     db.init_app(app)
     csrf.init_app(app)
+
+    @app.errorhandler(CSRFError)
+    def csrf_failed(e):
+        """세션 쿠키가 없거나 오래된 페이지에서 제출한 경우. 영어 400 화면 대신
+        같은 페이지를 다시 열어(새 토큰) 안내한다."""
+        app.logger.warning("CSRF 실패: %s %s (%s)", request.method, request.path, e.description)
+        flash("페이지가 오래됐거나 접속 정보가 없어서 처리하지 못했어요. 다시 시도해 주세요.", "error")
+        if request.headers.get("HX-Request") == "true":
+            resp = make_response("", 200)
+            resp.headers["HX-Refresh"] = "true"
+            return resp
+        # 같은 사이트에서 온 경우만 그 페이지로, 아니면 같은 주소(GET)로
+        target = request.referrer if request.referrer and request.referrer.startswith(request.host_url) else request.path
+        return redirect(target)
 
     from . import admin, auth, cli, guide, main, people, tree
 

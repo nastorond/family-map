@@ -203,7 +203,14 @@ def test_csrf_required_when_enabled(tmp_path):
             "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'csrf.db'}",
         }
     )
-    res = app.test_client().post("/login", data={"name": "a", "birth_date": "19900101", "pin": "123456"})
-    assert res.status_code == 400
+    client = app.test_client()
+    # 토큰 없이 제출하면 처리하지 않고(로그인 안 됨) 같은 페이지로 돌려보내며 안내한다
+    res = client.post("/login", data={"name": "a", "birth_date": "19900101", "pin": "123456"})
+    assert res.status_code == 302 and res.headers["Location"].endswith("/login")
+    page = client.get("/login").get_data(as_text=True)
+    assert "다시 시도해 주세요" in page
+    # 팝업(htmx) 요청이면 화면 새로고침
+    res = client.post("/logout", headers={"HX-Request": "true"})
+    assert res.headers.get("HX-Refresh") == "true"
     with app.app_context():
         db.engine.dispose()
