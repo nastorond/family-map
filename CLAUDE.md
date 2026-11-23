@@ -123,7 +123,17 @@
 - [x] 가계도 보기 (집안 전체, 자체 배치 + d3 7.9.0 `app/static/vendor/`)
 - [x] PIN 5회 실패 시 잠금
 - [ ] PWA manifest, 아이콘
-- [ ] Dockerfile + docker-compose.yml (app + cloudflared Quick Tunnel) — 작성만 함, Docker로 아직 실행 안 해봄
+- [x] Dockerfile + docker-compose.yml (app + cloudflared Quick Tunnel) — NAS에서 실행 중
+
+## NAS 운영 (시놀로지 DS225+, x86_64, Container Manager)
+
+- 위치: `nastorond@172.30.1.1:/volume1/docker/family`. SSH 키(이 PC `~/.ssh/id_ed25519`)로 접속.
+- 배포: `bash scripts/deploy_nas.sh` — 커밋된 HEAD를 올리고 app만 다시 빌드. 터널은 그대로라 주소 유지.
+- `.env`(NAS에만 있음, 600): `SECRET_KEY`, `COOKIE_SECURE=1`, `APP_UID=1026`, `APP_GID=100`(nastorond 계정).
+- 터널 주소 확인: `docker compose logs cloudflared | grep trycloudflare`. cloudflared 컨테이너가 재시작되면 바뀐다.
+- docker 명령은 `/usr/local/bin/docker`. nastorond는 `docker` 그룹(소켓 `root:docker`). 재부팅하면 소켓이 `root:root`로 돌아가므로 DSM 작업 스케줄러(부트업, root)에 `chown root:docker /var/run/docker.sock`을 둔다.
+- **시놀로지 ACL 주의**: 공유 폴더의 ACL이 붙은 폴더는 컨테이너 안에서 읽기 전용으로 보인다. `data/`는 `synoacltool -del`로 ACL을 지우고 `chmod 750`(주인 nastorond)로 둔다.
+- 관리자 계정 생성: `ssh -t nastorond@172.30.1.1 "cd /volume1/docker/family && /usr/local/bin/docker compose exec app flask create-admin"`.
 
 ## 개발 실행
 
